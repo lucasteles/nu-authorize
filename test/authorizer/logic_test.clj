@@ -93,18 +93,25 @@
 
 (deftest add-violation-test
   (testing "should add violation to empty state"
-    (let [current-state {:violations []}
+    (let [validation-state {:violations []}
           expected-state {:violations [:test-violation]}]
-      (is (= expected-state (l/add-violation current-state :test-violation)))))
+      (is (= expected-state (l/add-violation validation-state :test-violation)))))
 
   (testing "should add violation to the current state"
-    (let [current-state {:violations [:current-violation]}
+    (let [validation-state {:violations [:current-violation]}
           expected-state {:violations [:current-violation :test-violation]}]
-      (is (= expected-state (l/add-violation current-state :test-violation))))))
+      (is (= expected-state (l/add-violation validation-state :test-violation))))))
 
 (deftest validate-limit-test
   (testing "should add insufficient-limit violation in the state if the account dont have limit"
-    (let [current-state {:state (create-active-account 0)  :violations []}
+    (let [validation-state {:state (create-active-account 0)  :violations []}
           transaction {:transaction {:merchant "", :amount 1, :time "2019-02-13T10:00:00.000Z"}}
-          new-state (l/validate-limit current-state transaction)]
-             (is (some #(= :insufficient-limit %) (:violations new-state) )))))
+          new-state (l/validate-limit validation-state transaction)]
+             (is (some #(= :insufficient-limit %) (:violations new-state) ))))
+
+  (testing "should not add insufficient-limit violation in the state if the account have limit"
+    (let [validation-state {:state (create-active-account 1)  :violations []}
+          transaction {:transaction {:merchant "", :amount 1, :time "2019-02-13T10:00:00.000Z"}}
+          new-state (l/validate-limit validation-state transaction)]
+             (is (empty?  (:violations new-state) )))))
+
