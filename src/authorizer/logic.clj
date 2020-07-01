@@ -1,5 +1,10 @@
 (ns authorizer.logic
-  (:require [clojure.data.json :as j]))
+  (:require [clojure.data.json :as j]
+            [clj-time.format :as f]
+            [clj-time.core :as t]))
+
+(def time-window 2)
+(def max-transactions-window 3)
 
 (defn parse-json-input [json] (try
                                 (j/read-str json :key-fn keyword)
@@ -40,3 +45,36 @@
     (-> account
         (card-is-not-active?)
         (apply-violation :card-not-active validation-state))))
+
+(defn get-time [tx] (-> tx :transaction :time (f/parse)))
+(defn diff-time-in-minutes [[t1 t2]] (t/in-minutes (t/interval t1 t2)))
+
+(defn is-high-frequency? [new-transaction applied-transactions]
+  (->> new-transaction
+       (conj applied-transactions)
+       (map get-time)
+       (sort >)
+       (take max-transactions-window)
+       (partition 2 1)
+       (map diff-time-in-minutes)
+       (reduce +)
+       (> time-window)))
+
+(def t1 {:transaction {:merchant "Burger King", :amount 20, :time "2019-01-1T10:01:00.000Z"}})
+(def t2 {:transaction {:merchant "Burger King", :amount 20, :time "2019-01-1T10:02:00.000Z"}})
+(def t3 {:transaction {:merchant "Burger King", :amount 20, :time "2019-01-1T10:03:00.000Z"}})
+(def ts [t1 t2])
+
+(diff-time-in-minutes [(get-time t1) (get-time t2)])
+
+; (is-high-frequency? t3 ts)
+  (->> t3
+       (conj ts)
+       (map get-time)
+       (sort t/before?)
+       (take max-transactions-window)
+       (partition 2 1)
+       (map diff-time-in-minutes)
+       (reduce +)
+       (< time-window)
+       )
