@@ -75,21 +75,21 @@
           new-state (l/create-account initial-state account-input)]
       (is (=  (:state initial-state) (:state new-state))))))
 
-(deftest has-limit?-test
-  (testing "should return false if the account dont have limit"
+(deftest has-no-limit?-test
+  (testing "should return true if the account dont have limit"
     (let [account (create-active-account 0)
           amount 1]
-      (is (not (l/has-limit? account amount)))))
+      (is (l/has-no-limit? account amount))))
 
-  (testing "should return true if the account have the exaclty limit"
+  (testing "should return false if the account have the exaclty limit"
     (let [account (create-active-account 1)
           amount 0]
-      (is (l/has-limit? account amount))))
+      (is (not (l/has-no-limit? account amount)))))
 
-  (testing "should return true if the account have more then the necessary limit"
+  (testing "should return false if the account have more then the necessary limit"
     (let [account (create-active-account 3)
           amount 1]
-      (is (l/has-limit? account amount)))))
+      (is (not (l/has-no-limit? account amount))))))
 
 (deftest add-violation-test
   (testing "should add violation to empty state"
