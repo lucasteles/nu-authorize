@@ -56,43 +56,55 @@
       (is (empty? (:violations new-state)))))
 
   (testing "should return a violation if an account already exists"
-    (let [initial-state { :state (create-active-account 0) }
+    (let [initial-state {:state (create-active-account 0)}
           account-input (create-active-account 1)
           new-state (l/create-account initial-state account-input)
           expected-violations [:account-already-initialized]]
       (is (= (:violations new-state) expected-violations))))
 
   (testing "should add a violation if an account already contains one"
-    (let [initial-state { :state (create-active-account 0) :violations [:test-violation]}
+    (let [initial-state {:state (create-active-account 0) :violations [:test-violation]}
           account-input {:account "new account"}
           new-state (l/create-account initial-state account-input)
           expected-violations [:test-violation :account-already-initialized]]
       (is (= (:violations new-state) expected-violations))))
 
   (testing "should not change the current account when have a violation"
-    (let [initial-state { :state (create-active-account 0) :violations [:test-violation]}
+    (let [initial-state {:state (create-active-account 0) :violations [:test-violation]}
           account-input {:account "new account"}
           new-state (l/create-account initial-state account-input)]
       (is (=  (:state initial-state) (:state new-state))))))
 
 (deftest has-limit?-test
   (testing "should return false if the account dont have limit"
-  (let [account {:availableLimit 0}
-        amount 1]
-    (is (not (l/has-limit? account amount)))))
+    (let [account {:availableLimit 0}
+          amount 1]
+      (is (not (l/has-limit? account amount)))))
 
   (testing "should return true if the account have the exaclty limit"
-  (let [account {:availableLimit 1}
-        amount 0]
-    (is  (l/has-limit? account amount))))
+    (let [account {:availableLimit 1}
+          amount 0]
+      (is (l/has-limit? account amount))))
 
   (testing "should return true if the account have more then the necessary limit"
-  (let [account {:availableLimit 2}
-        amount 1]
-    (is  (l/has-limit? account amount)))))
+    (let [account {:availableLimit 2}
+          amount 1]
+      (is (l/has-limit? account amount)))))
 
 (deftest add-violation-test
-  (testing "should add violation to the current state"
+  (testing "should add violation to empty state"
     (let [current-state {:violations []}
           expected-state {:violations [:test-violation]}]
+      (is (= expected-state (l/add-violation current-state :test-violation)))))
+
+  (testing "should add violation to the current state"
+    (let [current-state {:violations [:current-violation]}
+          expected-state {:violations [:current-violation :test-violation]}]
       (is (= expected-state (l/add-violation current-state :test-violation))))))
+
+(deftest validate-limit-test
+  (testing "should add insufficient-limit violation in the state if the account dont have limit"
+    (let [current-state {:state (create-active-account 0)  :violations []}
+          transaction {:transaction {:merchant "", :amount 1, :time "2019-02-13T10:00:00.000Z"}}
+          new-state (l/validate-limit current-state transaction)]
+              (is (contains? (:violations new-state) :insufficient-limit)))))

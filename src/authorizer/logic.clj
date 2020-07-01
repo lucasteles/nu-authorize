@@ -16,7 +16,7 @@
     (add-violation current-state :account-already-initialized)
     {:state account-info, :violations []}))
 
-(defn has-limit? [account amount] (>= (:availableLimit account) amount))
+(defn has-limit? [account amount] (>= (get-in account [:account :availableLimit]) amount))
 
 (defn apply-violation [violation-name current-state should-apply]
   (if should-apply
@@ -24,11 +24,9 @@
     current-state))
 
 (defn validate-limit [current-state transaction]
-  (let  [account (:account current-state)]
+  (let  [account (:state current-state)]
     (->> transaction
+         :transaction
          :amount
          (has-limit? account)
-         (apply-violation current-state :insufficient-limit))))
-
-; (defn validade-transaction [account transaction]
-;   (let [v]))
+         (apply-violation :insufficient-limit current-state))))
