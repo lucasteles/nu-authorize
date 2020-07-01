@@ -79,17 +79,17 @@
   (testing "should return true if the account dont have limit"
     (let [account (create-active-account 0)
           amount 1]
-      (is (l/has-no-limit? account amount))))
+      (is (l/has-no-limit? amount account ))))
 
   (testing "should return false if the account have the exaclty limit"
     (let [account (create-active-account 1)
           amount 0]
-      (is (not (l/has-no-limit? account amount)))))
+      (is (not (l/has-no-limit? amount account )))))
 
   (testing "should return false if the account have more then the necessary limit"
     (let [account (create-active-account 3)
           amount 1]
-      (is (not (l/has-no-limit? account amount))))))
+      (is (not (l/has-no-limit? amount account ))))))
 
 (deftest add-violation-test
   (testing "should add violation to empty state"
@@ -107,11 +107,23 @@
     (let [validation-state {:state (create-active-account 0)  :violations []}
           transaction {:transaction {:merchant "", :amount 1, :time "2019-02-13T10:00:00.000Z"}}
           new-state (l/validate-limit validation-state transaction)]
-             (is (some #(= :insufficient-limit %) (:violations new-state) ))))
+      (is (some #(= :insufficient-limit %) (:violations new-state)))))
 
   (testing "should not add insufficient-limit violation in the state if the account have limit"
     (let [validation-state {:state (create-active-account 1)  :violations []}
           transaction {:transaction {:merchant "", :amount 1, :time "2019-02-13T10:00:00.000Z"}}
           new-state (l/validate-limit validation-state transaction)]
-             (is (empty?  (:violations new-state) )))))
+      (is (empty?  (:violations new-state))))))
 
+(deftest validate-active-card-test
+  (testing "should add card-not-active violation when account card is not active"
+    (let [inactive-account {:account {:activeCard false :availableLimit 0}}
+          validation-state {:state inactive-account :violations []}
+          new-state (l/validate-active-card validation-state)]
+      (is (some #(= :card-not-active %) (:violations new-state)))))
+
+  (testing "should not add card-not-active violation when account card is active"
+    (let [account {:account {:activeCard true :availableLimit 0}}
+          validation-state {:state account :violations []}
+          new-state (l/validate-active-card validation-state)]
+      (is (empty? (:violations new-state))))))

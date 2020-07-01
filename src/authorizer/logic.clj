@@ -16,20 +16,27 @@
     (add-violation current-state :account-already-initialized)
     {:state account-info, :violations []}))
 
-(defn apply-violation [violation-name validation-state should-apply]
+(defn apply-violation [should-apply violation-name validation-state]
   (if should-apply
     (add-violation validation-state violation-name)
     validation-state))
 
-(defn has-no-limit? [account amount] 
-  (-> account 
-    :account
-    :availableLimit
-    (< amount)))
+(defn has-no-limit? [amount account]
+  (-> account
+      :account :availableLimit
+      (< amount)))
 
 (defn validate-limit [validation-state transaction]
   (let [account (:state validation-state)]
-    (->> transaction :transaction :amount
-         (has-no-limit? account)
-         (apply-violation :insufficient-limit validation-state))))
+    (-> transaction :transaction :amount
+        (has-no-limit? account)
+        (apply-violation :insufficient-limit validation-state))))
 
+(defn card-is-not-active? [account]
+  (-> account :account :activeCard (not)))
+
+(defn validate-active-card [validation-state]
+  (let [account (:state validation-state)]
+    (-> account
+        (card-is-not-active?)
+        (apply-violation :card-not-active validation-state))))
