@@ -77,17 +77,17 @@
 
 (deftest has-limit?-test
   (testing "should return false if the account dont have limit"
-    (let [account {:availableLimit 0}
+    (let [account (create-active-account 0)
           amount 1]
       (is (not (l/has-limit? account amount)))))
 
   (testing "should return true if the account have the exaclty limit"
-    (let [account {:availableLimit 1}
+    (let [account (create-active-account 1)
           amount 0]
       (is (l/has-limit? account amount))))
 
   (testing "should return true if the account have more then the necessary limit"
-    (let [account {:availableLimit 2}
+    (let [account (create-active-account 3)
           amount 1]
       (is (l/has-limit? account amount)))))
 
@@ -107,4 +107,4 @@
     (let [current-state {:state (create-active-account 0)  :violations []}
           transaction {:transaction {:merchant "", :amount 1, :time "2019-02-13T10:00:00.000Z"}}
           new-state (l/validate-limit current-state transaction)]
-              (is (contains? (:violations new-state) :insufficient-limit)))))
+             (is (some #(= :insufficient-limit %) (:violations new-state) )))))
