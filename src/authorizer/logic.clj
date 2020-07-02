@@ -26,7 +26,6 @@
     (add-violation validation-state violation-name)
     validation-state))
 
-; TODO : testar esse cara e adicionar ele no has-no-limit
 (defn get-updated-account [state]
   (let [debit (->> state :transactions (map :amount) (reduce +))]
     (update-in state [:account :availableLimit] - debit)))

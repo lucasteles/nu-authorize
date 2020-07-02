@@ -209,19 +209,46 @@
           new-state (l/validate-doubled-transaction validation-state tx2)]
       (is (= expected-violations (:violations new-state))))))
 
-(deftest save-transaction-tests
+(deftest save-transaction-test
   (testing "should create first transaction"
     (let [state b/initial-validation-state
           tx b/a-transaction
           new-state (l/save-transaction state tx)
           expected-txs [tx]]
-            (is (= expected-txs (:transactions new-state)))
-          ))
-          
+      (is (= expected-txs (:transactions new-state)))))
+
   (testing "should add a transaction"
     (let [tx b/a-transaction
           state (->> b/initial-validation-state (b/with-transactions [tx]))
           new-state (l/save-transaction state tx)
           expected-txs [tx tx]]
-            (is (= expected-txs (:transactions new-state)))
-          )))
+      (is (= expected-txs (:transactions new-state))))))
+
+(deftest get-updated-account-test
+  (testing "should return the account limit if not exist transactions"
+    (let [expected-limit 10
+          account (->> b/an-account (b/account-with-limit expected-limit))
+          transactions []
+          state (->> b/initial-validation-state (b/with-transactions transactions) (b/with-account account))
+          new-state (l/get-updated-account state)
+          current-limit (-> new-state :account :availableLimit)]
+      (is (= expected-limit current-limit))))
+
+  (testing "should return the account with calculated limit (1 tx)"
+    (let [account (->> b/an-account (b/account-with-limit 10))
+          transactions [(->> b/a-transaction (b/tx-with-amount 5))]
+          state (->> b/initial-validation-state (b/with-transactions transactions) (b/with-account account))
+          new-state (l/get-updated-account state)
+          expected-limit 5
+          current-limit (-> new-state :account :availableLimit)]
+      (is (= expected-limit current-limit))))
+
+  (testing "should return the account with calculated limit (2 tx)"
+    (let [account (->> b/an-account (b/account-with-limit 100))
+          transactions [(->> b/a-transaction (b/tx-with-amount 10))
+                        (->> b/a-transaction (b/tx-with-amount 20))]
+          state (->> b/initial-validation-state (b/with-transactions transactions) (b/with-account account))
+          new-state (l/get-updated-account state)
+          expected-limit 70
+          current-limit (-> new-state :account :availableLimit)]
+      (is (= expected-limit current-limit)))))

@@ -26,6 +26,9 @@
 (defn with-transactions [transactions current-state]
   (assoc-in current-state [:transactions] transactions))
 
+(defn with-account [account current-state]
+  (merge current-state account))
+
 (defn add-transaction [transaction current-state]
   (update-in current-state [:transactions] conj transaction))
 
