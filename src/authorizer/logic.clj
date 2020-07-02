@@ -17,9 +17,9 @@
   (update validation-state :violations conj violation))
 
 (defn create-account [current-state account-info]
-  (if (:state current-state)
+  (if (:account current-state)
     (add-violation current-state :account-already-initialized)
-    {:state (merge account-info {:transactions []}), :violations []}))
+    (merge account-info {:transactions []  :violations []})))
 
 (defn apply-violation [should-apply violation-name validation-state]
   (if should-apply
@@ -27,10 +27,9 @@
     validation-state))
 
 ; TODO : testar esse cara e adicionar ele no has-no-limit
-(defn get-updated-account [current-state]
-  (let [debit (->> current-state :state :transactions (map :amount) (reduce +))
-        account (:state current-state)]
-    (update-in account [:account :availableLimit] - debit)))
+(defn get-updated-account [state]
+  (let [debit (->> state :transactions (map :amount) (reduce +))]
+    (update-in state [:account :availableLimit] - debit)))
 
 (defn has-no-limit? [amount account]
   (-> account
@@ -76,26 +75,26 @@
          (<= time-window)))))
 
 (defn validate-limit [validation-state transaction]
-  (let [account (:state validation-state)]
-    (-> transaction :transaction :amount
-        (has-no-limit? account)
-        (apply-violation :insufficient-limit validation-state))))
+  (-> transaction
+      :transaction :amount
+      (has-no-limit? validation-state)
+      (apply-violation :insufficient-limit validation-state))
+      )
 
 (defn validate-active-card [validation-state]
-  (let [account (:state validation-state)]
-    (-> account
-        (is-card-not-active?)
-        (apply-violation :card-not-active validation-state))))
+  (-> validation-state
+      (is-card-not-active?)
+      (apply-violation :card-not-active validation-state)))
 
 (defn validate-transaction-frequency [validation-state transaction]
   (-> validation-state
-      :state :transactions
+      :transactions
       (is-high-frequency? transaction)
       (apply-violation :high-frequency-small-interval validation-state)))
 
 (defn validate-doubled-transaction [validation-state transaction]
   (-> validation-state
-      :state :transactions
+      :transactions
       (last)
       (is-doubled? transaction)
       (apply-violation :doubled-transaction validation-state)))

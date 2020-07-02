@@ -45,7 +45,7 @@
     (let [initial-empty-state {}
           account-input b/an-account
           new-state (l/create-account initial-empty-state account-input)]
-      (is (= (:state new-state) account-input))))
+      (is (= (:account new-state) (:account account-input)))))
 
   (testing "should not have violations when an account is created"
     (let [initial-empty-state {}
@@ -71,7 +71,7 @@
     (let [initial-state (->> b/initial-validation-state (b/with-violation :test-violation))
           account-input b/an-account
           new-state (l/create-account initial-state account-input)]
-      (is (=  (:state initial-state) (:state new-state))))))
+      (is (=  (:account initial-state) (:account new-state))))))
 
 (deftest has-no-limit?-test
   (testing "should return true if the account dont have limit"
@@ -105,6 +105,7 @@
     (let [validation-state (->> b/initial-validation-state (b/with-availableLimit 0))
           transaction (->> b/a-transaction (b/tx-with-amount 1))
           new-state (l/validate-limit validation-state transaction)]
+      (println new-state)
       (is (some #(= :insufficient-limit %) (:violations new-state)))))
 
   (testing "should not add insufficient-limit violation in the state if the account have limit"
@@ -152,7 +153,28 @@
   (testing "should return false if is the second transactions"
     (let [tx (->> b/a-transaction (b/tx-with-time 10 0))
           past-transactions [tx]]
-      (is (not (l/is-high-frequency? past-transactions tx))))))
+      (is (not (l/is-high-frequency? past-transactions tx)))))
+
+  (testing "should return true if had one transaction after 2 minutes of 3 transactions"
+    (let [tx (->> b/a-transaction (b/tx-with-time 10 0))
+          tx-new (->> b/a-transaction (b/tx-with-time 13 0))
+          past-transactions [tx tx tx]]
+      (is (not (l/is-high-frequency? past-transactions tx-new))))))
+
+; (let [tx (->> b/a-transaction (b/tx-with-time 10 0))
+;       tx-new (->> b/a-transaction (b/tx-with-time 14 0))
+;       past-transactions [tx tx tx tx-new]]
+;   (->> past-transactions
+;        (map l/get-time)
+;       ;  (map :transaction )
+;       ;  (map :time )
+;        (take-last l/max-transactions-window)
+;        (partition 2 1)
+;        (map l/diff-time)
+;        (reduce +)
+;        (l/milis->minutes)
+;         (>= l/time-window)
+;        ))
 
 (deftest validate-high-frequency-test
   (testing "should add violation high-frequency-small-interval"

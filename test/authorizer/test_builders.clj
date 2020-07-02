@@ -15,23 +15,22 @@
 (defn tx-with-time [minutes seconds transaction] (assoc-in transaction
                                                         [:transaction :time] (format "2019-01-01T10:%02d:%02d.000Z" minutes seconds)))
 (def initial-validation-state
-  {:state (merge an-account { :transactions [] })
-   :violations []})
+   (merge an-account { :transactions [] :violations []}))
 
 (defn with-availableLimit [limit current-state]
-  (assoc-in current-state [:state :account :availableLimit] limit))
+  (assoc-in current-state [:account :availableLimit] limit))
 
 (defn with-activeCard [active current-state]
-  (assoc-in current-state [:state :account :activeCard] active))
+  (assoc-in current-state [:account :activeCard] active))
 
 (defn with-transactions [transactions current-state]
-  (assoc-in current-state [:state :transactions] transactions))
+  (assoc-in current-state [:transactions] transactions))
 
 (defn add-transaction [transaction current-state]
-  (update-in current-state [:state :transactions] conj transaction))
+  (update-in current-state [:transactions] conj transaction))
 
 (defn with-violation [violation current-state]
   (update current-state :violations conj violation))
 
-(defn active [current-state] (assoc-in current-state [:state :account :activeCard] true))
-(defn inactive [current-state] (assoc-in current-state [:state :account :activeCard] false))
+(defn active [current-state] (assoc-in current-state [:account :activeCard] true))
+(defn inactive [current-state] (assoc-in current-state [:account :activeCard] false))
