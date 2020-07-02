@@ -93,4 +93,4 @@
       (apply-violation :doubled-transaction validation-state)))
 
 (defn save-transaction [current-state transaction]
-  (update current-state :transactions conj (:transaction transaction)))
+  (update current-state :transactions conj transaction))

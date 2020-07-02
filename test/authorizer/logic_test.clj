@@ -171,7 +171,6 @@
           new-state (l/validate-transaction-frequency validation-state tx)]
       (is (= expected-violations (:violations new-state))))))
 
-
 (deftest is-doubled?-test
   (testing "should return true when have 2 tx with same amount and merchant in less then 2 minutes"
     (let [tx1 (->> b/a-transaction (b/tx-with-time 1 0) (b/tx-with-amount 1) (b/tx-with-merchant "A"))
@@ -193,7 +192,6 @@
           tx2 (->> b/a-transaction (b/tx-with-time 3 1) (b/tx-with-amount 1) (b/tx-with-merchant "A"))]
       (is (not (l/is-doubled? tx1 tx2))))))
 
-
 (deftest validate-doubled-transaction-test
   (testing "should add violation doubled-transaction"
     (let [tx1 (->> b/a-transaction (b/tx-with-time 1 0) (b/tx-with-amount 1) (b/tx-with-merchant "A"))
@@ -210,3 +208,20 @@
           expected-violations []
           new-state (l/validate-doubled-transaction validation-state tx2)]
       (is (= expected-violations (:violations new-state))))))
+
+(deftest save-transaction-tests
+  (testing "should create first transaction"
+    (let [state b/initial-validation-state
+          tx b/a-transaction
+          new-state (l/save-transaction state tx)
+          expected-txs [tx]]
+            (is (= expected-txs (:transactions new-state)))
+          ))
+          
+  (testing "should add a transaction"
+    (let [tx b/a-transaction
+          state (->> b/initial-validation-state (b/with-transactions [tx]))
+          new-state (l/save-transaction state tx)
+          expected-txs [tx tx]]
+            (is (= expected-txs (:transactions new-state)))
+          )))
