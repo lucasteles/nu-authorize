@@ -31,50 +31,65 @@
       :account :availableLimit
       (< amount)))
 
+(defn is-card-not-active? [account]
+  (-> account :account :activeCard (not)))
+
+(defn get-time [tx] (-> tx :transaction :time (f/parse)))
+(defn diff-time
+  ([t1 t2] (t/in-millis (t/interval t1 t2)))
+  ([[t1 t2]] (diff-time t1 t2)))
+(defn milis->minutes [miliseconds] (/ (/ miliseconds 1000) 60))
+
+(defn- have-enouth-transactions? [applied-transactions]
+  (>= (count applied-transactions) (dec max-transactions-window)))
+
+(defn- have-more-transactions-than-allowed? [new-transaction applied-transactions]
+  (->> new-transaction
+       (conj applied-transactions)
+       (map get-time)
+       (sort t/before?)
+       (take max-transactions-window)
+       (partition 2 1)
+       (map diff-time)
+       (reduce +)
+       (milis->minutes)
+       (>= time-window)))
+
+(defn is-high-frequency? [applied-transactions new-transaction]
+  (and (have-enouth-transactions? applied-transactions)
+       (have-more-transactions-than-allowed? new-transaction applied-transactions)))
+
+(defn is-doubled? [new-transaction last-transaction]
+  (let [get-submap #(-> % :transaction (select-keys [:merchant :amount]))]
+    (and
+     (= (get-submap new-transaction) (get-submap last-transaction))
+     (-> new-transaction
+         (get-time)
+         (diff-time (get-time last-transaction))
+         (milis->minutes)
+         (<= time-window)))))
+
 (defn validate-limit [validation-state transaction]
   (let [account (:state validation-state)]
     (-> transaction :transaction :amount
         (has-no-limit? account)
         (apply-violation :insufficient-limit validation-state))))
 
-(defn card-is-not-active? [account]
-  (-> account :account :activeCard (not)))
-
 (defn validate-active-card [validation-state]
   (let [account (:state validation-state)]
     (-> account
-        (card-is-not-active?)
+        (is-card-not-active?)
         (apply-violation :card-not-active validation-state))))
 
-(defn get-time [tx] (-> tx :transaction :time (f/parse)))
-(defn diff-time-in-minutes [[t1 t2]] (t/in-minutes (t/interval t1 t2)))
+(defn validate-transaction-frequency [validation-state transaction]
+  (-> validation-state
+      :state :transactions
+      (is-high-frequency? transaction)
+      (apply-violation :high-frequency-small-interval validation-state)))
 
-(defn is-high-frequency? [new-transaction applied-transactions]
-  (->> new-transaction
-       (conj applied-transactions)
-       (map get-time)
-       (sort >)
-       (take max-transactions-window)
-       (partition 2 1)
-       (map diff-time-in-minutes)
-       (reduce +)
-       (> time-window)))
-
-(def t1 {:transaction {:merchant "Burger King", :amount 20, :time "2019-01-1T10:01:00.000Z"}})
-(def t2 {:transaction {:merchant "Burger King", :amount 20, :time "2019-01-1T10:02:00.000Z"}})
-(def t3 {:transaction {:merchant "Burger King", :amount 20, :time "2019-01-1T10:03:00.000Z"}})
-(def ts [t1 t2])
-
-(diff-time-in-minutes [(get-time t1) (get-time t2)])
-
-; (is-high-frequency? t3 ts)
-  (->> t3
-       (conj ts)
-       (map get-time)
-       (sort t/before?)
-       (take max-transactions-window)
-       (partition 2 1)
-       (map diff-time-in-minutes)
-       (reduce +)
-       (< time-window)
-       )
+(defn validate-doubled-transaction [validation-state transaction]
+  (-> validation-state
+      :state :transactions
+      (last)
+      (is-doubled? transaction)
+      (apply-violation :doubled-transaction validation-state)))

@@ -1,10 +1,8 @@
 (ns authorizer.logic-test
   (:require
    [clojure.test :refer :all]
+   [authorizer.test-builders :as b]
    [authorizer.logic :as l]))
-
-(defn create-active-account [limit] {:account {:activeCard true
-                                               :availableLimit limit}})
 
 (deftest parse-json-input-test
   (testing "should parse a valid account json"
@@ -45,51 +43,51 @@
 (deftest create-account-test
   (testing "should create a new account"
     (let [initial-empty-state {}
-          account-input (create-active-account 0)
+          account-input b/an-account
           new-state (l/create-account initial-empty-state account-input)]
       (is (= (:state new-state) account-input))))
 
   (testing "should not have violations when an account is created"
     (let [initial-empty-state {}
-          account-input (create-active-account 0)
+          account-input b/an-account
           new-state (l/create-account initial-empty-state account-input)]
       (is (empty? (:violations new-state)))))
 
   (testing "should return a violation if an account already exists"
-    (let [initial-state {:state (create-active-account 0)}
-          account-input (create-active-account 1)
+    (let [initial-state b/initial-validation-state
+          account-input (->> b/an-account (b/account-with-limit 1))
           new-state (l/create-account initial-state account-input)
           expected-violations [:account-already-initialized]]
       (is (= (:violations new-state) expected-violations))))
 
   (testing "should add a violation if an account already contains one"
-    (let [initial-state {:state (create-active-account 0) :violations [:test-violation]}
-          account-input {:account "new account"}
+    (let [initial-state (->> b/initial-validation-state (b/with-violation :test-violation))
+          account-input b/an-account
           new-state (l/create-account initial-state account-input)
           expected-violations [:test-violation :account-already-initialized]]
       (is (= (:violations new-state) expected-violations))))
 
   (testing "should not change the current account when have a violation"
-    (let [initial-state {:state (create-active-account 0) :violations [:test-violation]}
-          account-input {:account "new account"}
+    (let [initial-state (->> b/initial-validation-state (b/with-violation :test-violation))
+          account-input b/an-account
           new-state (l/create-account initial-state account-input)]
       (is (=  (:state initial-state) (:state new-state))))))
 
 (deftest has-no-limit?-test
   (testing "should return true if the account dont have limit"
-    (let [account (create-active-account 0)
+    (let [account b/an-account
           amount 1]
-      (is (l/has-no-limit? amount account ))))
+      (is (l/has-no-limit? amount account))))
 
   (testing "should return false if the account have the exaclty limit"
-    (let [account (create-active-account 1)
+    (let [account (->> b/an-account (b/account-with-limit 1))
           amount 0]
-      (is (not (l/has-no-limit? amount account )))))
+      (is (not (l/has-no-limit? amount account)))))
 
   (testing "should return false if the account have more then the necessary limit"
-    (let [account (create-active-account 3)
+    (let [account (->> b/an-account (b/account-with-limit 3))
           amount 1]
-      (is (not (l/has-no-limit? amount account ))))))
+      (is (not (l/has-no-limit? amount account))))))
 
 (deftest add-violation-test
   (testing "should add violation to empty state"
@@ -104,26 +102,101 @@
 
 (deftest validate-limit-test
   (testing "should add insufficient-limit violation in the state if the account dont have limit"
-    (let [validation-state {:state (create-active-account 0)  :violations []}
-          transaction {:transaction {:merchant "", :amount 1, :time "2019-02-13T10:00:00.000Z"}}
+    (let [validation-state (->> b/initial-validation-state (b/with-availableLimit 0))
+          transaction (->> b/a-transaction (b/tx-with-amount 1))
           new-state (l/validate-limit validation-state transaction)]
       (is (some #(= :insufficient-limit %) (:violations new-state)))))
 
   (testing "should not add insufficient-limit violation in the state if the account have limit"
-    (let [validation-state {:state (create-active-account 1)  :violations []}
-          transaction {:transaction {:merchant "", :amount 1, :time "2019-02-13T10:00:00.000Z"}}
+    (let [validation-state (->> b/initial-validation-state (b/with-availableLimit 1))
+          transaction (->> b/a-transaction (b/tx-with-amount 1))
           new-state (l/validate-limit validation-state transaction)]
       (is (empty?  (:violations new-state))))))
 
 (deftest validate-active-card-test
   (testing "should add card-not-active violation when account card is not active"
-    (let [inactive-account {:account {:activeCard false :availableLimit 0}}
-          validation-state {:state inactive-account :violations []}
+    (let [validation-state (->> b/initial-validation-state (b/inactive))
           new-state (l/validate-active-card validation-state)]
       (is (some #(= :card-not-active %) (:violations new-state)))))
 
   (testing "should not add card-not-active violation when account card is active"
-    (let [account {:account {:activeCard true :availableLimit 0}}
-          validation-state {:state account :violations []}
+    (let [validation-state b/initial-validation-state
           new-state (l/validate-active-card validation-state)]
       (is (empty? (:violations new-state))))))
+
+(deftest is-high-frequency?-test
+  (testing "should return true if had 3 transactions at same time"
+    (let [base-transaction (->> b/a-transaction (b/tx-with-time 10 0))
+          past-transactions [base-transaction base-transaction]]
+      (is (l/is-high-frequency? past-transactions base-transaction))))
+
+  (testing "should return true if had 3 transactions in less then 2 minutes"
+    (let [tx1 (->> b/a-transaction (b/tx-with-time 10 0))
+          tx2 (->> b/a-transaction (b/tx-with-time 11 0))
+          tx3 (->> b/a-transaction (b/tx-with-time 12 0))
+          past-transactions [tx1 tx2]]
+      (is (l/is-high-frequency? past-transactions tx3))))
+
+  (testing "should return false if had 2 transactions in less then 2 minutes"
+    (let [tx1 (->> b/a-transaction (b/tx-with-time 10 0))
+          tx2 (->> b/a-transaction (b/tx-with-time 12 0))
+          tx3 (->> b/a-transaction (b/tx-with-time 13 0))
+          past-transactions [tx1 tx2]]
+      (is (not (l/is-high-frequency? past-transactions tx3)))))
+
+  (testing "should return false if is the first transactions"
+    (let [tx (->> b/a-transaction (b/tx-with-time 10 0))
+          past-transactions []]
+      (is (not (l/is-high-frequency? past-transactions tx)))))
+
+  (testing "should return false if is the second transactions"
+    (let [tx (->> b/a-transaction (b/tx-with-time 10 0))
+          past-transactions [tx]]
+      (is (not (l/is-high-frequency? past-transactions tx))))))
+
+(deftest validate-high-frequency-test
+  (testing "should add violation high-frequency-small-interval"
+    (let [tx (->> b/a-transaction (b/tx-with-time 10 0))
+          past-transactions [tx tx]
+          validation-state (->> b/initial-validation-state (b/with-transactions past-transactions))
+          expected-violations [:high-frequency-small-interval]
+          new-state (l/validate-transaction-frequency validation-state tx)]
+      (is (= expected-violations (:violations new-state))))))
+
+(deftest is-doubled?-test
+  (testing "should return true when have 2 tx with same amount and merchant in less then 2 minutes"
+    (let [tx1 (->> b/a-transaction (b/tx-with-time 1 0) (b/tx-with-amount 1) (b/tx-with-merchant "A"))
+          tx2 (->> b/a-transaction (b/tx-with-time 2 0) (b/tx-with-amount 1) (b/tx-with-merchant "A"))]
+      (is (l/is-doubled? tx1 tx2))))
+
+  (testing "should return false when have 2 tx with same amount and diferent merchant in less then 2 minutes"
+    (let [tx1 (->> b/a-transaction (b/tx-with-time 1 0) (b/tx-with-amount 1) (b/tx-with-merchant "A"))
+          tx2 (->> b/a-transaction (b/tx-with-time 2 0) (b/tx-with-amount 1) (b/tx-with-merchant "B"))]
+      (is (not (l/is-doubled? tx1 tx2)))))
+
+  (testing "should return false when have 2 tx with same merchant and diferent amount in less then 2 minutes"
+    (let [tx1 (->> b/a-transaction (b/tx-with-time 1 0) (b/tx-with-amount 1) (b/tx-with-merchant "A"))
+          tx2 (->> b/a-transaction (b/tx-with-time 2 0) (b/tx-with-amount 2) (b/tx-with-merchant "A"))]
+      (is (not (l/is-doubled? tx1 tx2)))))
+
+  (testing "should return false when have 2 tx with same merchant and amount in more then 2 minutes"
+    (let [tx1 (->> b/a-transaction (b/tx-with-time 1 0) (b/tx-with-amount 1) (b/tx-with-merchant "A"))
+          tx2 (->> b/a-transaction (b/tx-with-time 3 1) (b/tx-with-amount 1) (b/tx-with-merchant "A"))]
+      (is (not (l/is-doubled? tx1 tx2))))))
+
+(deftest validate-doubled-transaction-test
+  (testing "should add violation doubled-transaction"
+    (let [tx1 (->> b/a-transaction (b/tx-with-time 1 0) (b/tx-with-amount 1) (b/tx-with-merchant "A"))
+          tx2 (->> b/a-transaction (b/tx-with-time 2 0) (b/tx-with-amount 1) (b/tx-with-merchant "A"))
+          validation-state (->> b/initial-validation-state (b/with-transactions [tx1]))
+          expected-violations [:doubled-transaction]
+          new-state (l/validate-doubled-transaction validation-state tx2)]
+      (is (= expected-violations (:violations new-state)))))
+
+  (testing "should not add violation doubled-transaction"
+    (let [tx1 (->> b/a-transaction (b/tx-with-time 1 0) (b/tx-with-amount 1) (b/tx-with-merchant "A"))
+          tx2 (->> b/a-transaction (b/tx-with-time 3 1) (b/tx-with-amount 1) (b/tx-with-merchant "A"))
+          validation-state (->> b/initial-validation-state (b/with-transactions [tx1]))
+          expected-violations []
+          new-state (l/validate-doubled-transaction validation-state tx2)]
+      (is (= expected-violations (:violations new-state))))))
