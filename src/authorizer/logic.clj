@@ -94,14 +94,30 @@
 (defn save-transaction [current-state transaction]
   (update current-state :transactions conj transaction))
 
-(defn has-violations? [state] 
-  (-> state :violations (empty?) (not))) 
+(defn get-show-data [validation-state]
+  (j/write-str (select-keys (get-updated-account validation-state) [:account :violations])))
 
-(defn process-transaction [app-state transaction]
+(defn has-violations? [validation-state]
+  (and
+   (contains? validation-state :violations)
+   (seq  (:violations validation-state))))
+
+(defn pipe-print [state i]
+  (println "DEBUG" i " - " state) state)
+
+(defn validate-transaction [app-state transaction]
   (-> app-state
       (get-updated-account)
       (merge {:violations []})
       (validate-active-card)
       (validate-limit transaction)
       (validate-doubled-transaction transaction)
-      (validate-transaction-frequency transaction)))
+      (validate-transaction-frequency transaction)
+      (:violations)))
+
+(defn process-transaction [app-state transaction]
+  (let [transaction-data (:transaction transaction)
+        violations (validate-transaction app-state transaction-data)]
+    (if (empty? violations)
+      (assoc (save-transaction app-state transaction-data) :violations [])
+      (assoc app-state :violations violations))))
