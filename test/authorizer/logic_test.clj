@@ -128,15 +128,16 @@
 (deftest is-high-frequency?-test
   (testing "should return true if had 3 transactions at same time"
     (let [base-transaction (->> b/a-transaction (b/tx-with-time 10 0))
-          past-transactions [base-transaction base-transaction]]
+          past-transactions [base-transaction base-transaction base-transaction]]
       (is (l/is-high-frequency? past-transactions base-transaction))))
 
   (testing "should return true if had 3 transactions in less then 2 minutes"
     (let [tx1 (->> b/a-transaction (b/tx-with-time 10 0))
           tx2 (->> b/a-transaction (b/tx-with-time 11 0))
-          tx3 (->> b/a-transaction (b/tx-with-time 12 0))
-          past-transactions [tx1 tx2]]
-      (is (l/is-high-frequency? past-transactions tx3))))
+          tx3 (->> b/a-transaction (b/tx-with-time 11 5))
+          tx4 (->> b/a-transaction (b/tx-with-time 12 0))
+          past-transactions [tx1 tx2 tx3]]
+      (is (l/is-high-frequency? past-transactions tx4))))
 
   (testing "should return false if had 2 transactions in less then 2 minutes"
     (let [tx1 (->> b/a-transaction (b/tx-with-time 10 0))
@@ -157,29 +158,14 @@
 
   (testing "should return true if had one transaction after 2 minutes of 3 transactions"
     (let [tx (->> b/a-transaction (b/tx-with-time 10 0))
-          tx-new (->> b/a-transaction (b/tx-with-time 13 0))
+          tx-new (->> b/a-transaction (b/tx-with-time 12 1))
           past-transactions [tx tx tx]]
       (is (not (l/is-high-frequency? past-transactions tx-new))))))
-
-; (let [tx (->> b/a-transaction (b/tx-with-time 10 0))
-;       tx-new (->> b/a-transaction (b/tx-with-time 14 0))
-;       past-transactions [tx tx tx tx-new]]
-;   (->> past-transactions
-;        (map l/get-time)
-;       ;  (map :transaction )
-;       ;  (map :time )
-;        (take-last l/max-transactions-window)
-;        (partition 2 1)
-;        (map l/diff-time)
-;        (reduce +)
-;        (l/milis->minutes)
-;         (>= l/time-window)
-;        ))
 
 (deftest validate-high-frequency-test
   (testing "should add violation high-frequency-small-interval"
     (let [tx (->> b/a-transaction (b/tx-with-time 10 0))
-          past-transactions [tx tx]
+          past-transactions [tx tx tx]
           validation-state (->> b/initial-validation-state (b/with-transactions past-transactions))
           expected-violations [:high-frequency-small-interval]
           new-state (l/validate-transaction-frequency validation-state tx)]

@@ -4,7 +4,7 @@
             [clj-time.core :as t]))
 
 (def time-window 2)
-(def max-transactions-window 3)
+(def max-transaction-count 3)
 
 (defn parse-json-input [json] (try
                                 (j/read-str json :key-fn keyword)
@@ -41,24 +41,20 @@
 
 (defn get-time [tx] (-> tx :transaction :time (f/parse)))
 (defn diff-time
-  ([t1 t2] (t/in-millis (t/interval t1 t2)))
-  ([[t1 t2]] (diff-time t1 t2)))
+  [t1 t2] (t/in-millis (t/interval t1 t2)))
 (defn milis->minutes [miliseconds] (/ (/ miliseconds 1000) 60))
 
 (defn- have-enouth-transactions? [applied-transactions]
-  (>= (count applied-transactions) (dec max-transactions-window)))
+  (>= (count applied-transactions) (dec max-transaction-count)))
 
 (defn- have-more-transactions-than-allowed? [new-transaction applied-transactions]
-  (->> new-transaction
-       (conj applied-transactions)
-       (map get-time)
-       (sort t/before?)
-       (take max-transactions-window)
-       (partition 2 1)
-       (map diff-time)
-       (reduce +)
-       (milis->minutes)
-       (>= time-window)))
+  (let [minutes-earlier (-> new-transaction (get-time)
+                            (t/plus (t/minutes (- time-window))))]
+    (->> applied-transactions
+         (map get-time)
+         (filter #(or (t/after? % minutes-earlier) (t/equal? % minutes-earlier)))
+         (count)
+         (<= max-transaction-count))))
 
 (defn is-high-frequency? [applied-transactions new-transaction]
   (and (have-enouth-transactions? applied-transactions)
@@ -78,8 +74,7 @@
   (-> transaction
       :transaction :amount
       (has-no-limit? validation-state)
-      (apply-violation :insufficient-limit validation-state))
-      )
+      (apply-violation :insufficient-limit validation-state)))
 
 (defn validate-active-card [validation-state]
   (-> validation-state
