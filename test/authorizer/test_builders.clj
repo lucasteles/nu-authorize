@@ -6,16 +6,16 @@
 (defn account-inactive [account] (assoc-in account [:account :activeCard] false))
 
 (def a-transaction
-  {:transaction {:merchant "Merchant name"
-                 :amount 0
-                 :time  "2019-01-01T10:00:00.000Z"}})
+  {:merchant "Merchant name"
+   :amount 0
+   :time  "2019-01-01T10:00:00.000Z"})
 
-(defn tx-with-amount [amount transaction] (assoc-in transaction [:transaction :amount] amount))
-(defn tx-with-merchant [name transaction] (assoc-in transaction [:transaction :merchant] name))
+(defn tx-with-amount [amount transaction] (assoc-in transaction [:amount] amount))
+(defn tx-with-merchant [name transaction] (assoc-in transaction [:merchant] name))
 (defn tx-with-time [minutes seconds transaction] (assoc-in transaction
-                                                        [:transaction :time] (format "2019-01-01T10:%02d:%02d.000Z" minutes seconds)))
+                                                           [:time] (format "2019-01-01T10:%02d:%02d.000Z" minutes seconds)))
 (def initial-validation-state
-   (merge an-account { :transactions [] :violations []}))
+  (merge an-account {:transactions [] :violations []}))
 
 (defn with-availableLimit [limit current-state]
   (assoc-in current-state [:account :availableLimit] limit))

@@ -39,20 +39,19 @@
 (defn is-card-not-active? [account]
   (-> account :account :activeCard (not)))
 
-(defn get-time [tx] (-> tx :transaction :time (f/parse)))
-(defn diff-time
-  [t1 t2] (t/in-millis (t/interval t1 t2)))
-(defn milis->minutes [miliseconds] (/ (/ miliseconds 1000) 60))
+(defn get-time [tx] (-> tx :time (f/parse)))
 
 (defn- have-enouth-transactions? [applied-transactions]
   (>= (count applied-transactions) (dec max-transaction-count)))
 
+(defn minutes-before-transaction [tx] (-> tx (get-time) (t/plus (t/minutes (- time-window)))))
+(defn after-or-equal? [this date] (or (t/after? this date) (t/equal? this date)))
+
 (defn- have-more-transactions-than-allowed? [new-transaction applied-transactions]
-  (let [minutes-earlier (-> new-transaction (get-time)
-                            (t/plus (t/minutes (- time-window))))]
+  (let [minutes-earlier (minutes-before-transaction new-transaction)]
     (->> applied-transactions
          (map get-time)
-         (filter #(or (t/after? % minutes-earlier) (t/equal? % minutes-earlier)))
+         (filter #(after-or-equal? % minutes-earlier))
          (count)
          (<= max-transaction-count))))
 
@@ -60,19 +59,18 @@
   (and (have-enouth-transactions? applied-transactions)
        (have-more-transactions-than-allowed? new-transaction applied-transactions)))
 
-(defn is-doubled? [new-transaction last-transaction]
-  (let [get-submap #(-> % :transaction (select-keys [:merchant :amount]))]
+(defn is-doubled? [last-transaction new-transaction]
+  (let [get-submap #(-> %  (select-keys [:merchant :amount]))
+        minutes-earlier (minutes-before-transaction new-transaction)]
     (and
      (= (get-submap new-transaction) (get-submap last-transaction))
-     (-> new-transaction
+     (-> last-transaction
          (get-time)
-         (diff-time (get-time last-transaction))
-         (milis->minutes)
-         (<= time-window)))))
+         (after-or-equal? minutes-earlier)))))
 
 (defn validate-limit [validation-state transaction]
   (-> transaction
-      :transaction :amount
+      :amount
       (has-no-limit? validation-state)
       (apply-violation :insufficient-limit validation-state)))
 
@@ -95,4 +93,4 @@
       (apply-violation :doubled-transaction validation-state)))
 
 (defn save-transaction [current-state transaction]
-  (update current-state :transactions conj transaction))
+  (update current-state :transactions conj (:transaction transaction)))
