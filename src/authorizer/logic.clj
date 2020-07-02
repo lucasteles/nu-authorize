@@ -93,3 +93,15 @@
 
 (defn save-transaction [current-state transaction]
   (update current-state :transactions conj transaction))
+
+(defn has-violations? [state] 
+  (-> state :violations (empty?) (not))) 
+
+(defn process-transaction [app-state transaction]
+  (-> app-state
+      (get-updated-account)
+      (merge {:violations []})
+      (validate-active-card)
+      (validate-limit transaction)
+      (validate-doubled-transaction transaction)
+      (validate-transaction-frequency transaction)))

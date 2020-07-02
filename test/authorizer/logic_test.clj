@@ -252,3 +252,13 @@
           expected-limit 70
           current-limit (-> new-state :account :availableLimit)]
       (is (= expected-limit current-limit)))))
+
+(deftest process-transaction 
+  (testing "should process a valid transaction"
+    (let [
+      account (->> b/an-account (b/with-availableLimit 10))
+      state (->> b/initial-state (b/with-account account))
+      tx (->> b/a-transaction (b/tx-with-amount 10))
+      new-state (l/process-transaction state tx)
+      ]
+      new-state)))

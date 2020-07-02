@@ -14,8 +14,12 @@
 (defn tx-with-merchant [name transaction] (assoc-in transaction [:merchant] name))
 (defn tx-with-time [minutes seconds transaction] (assoc-in transaction
                                                            [:time] (format "2019-01-01T10:%02d:%02d.000Z" minutes seconds)))
+
+(def initial-state
+  (merge an-account {:transactions []}))
+
 (def initial-validation-state
-  (merge an-account {:transactions [] :violations []}))
+  (merge initial-state {:violations []}))
 
 (defn with-availableLimit [limit current-state]
   (assoc-in current-state [:account :availableLimit] limit))
