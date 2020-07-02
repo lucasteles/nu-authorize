@@ -19,12 +19,18 @@
 (defn create-account [current-state account-info]
   (if (:state current-state)
     (add-violation current-state :account-already-initialized)
-    {:state account-info, :violations []}))
+    {:state (merge account-info {:transactions []}), :violations []}))
 
 (defn apply-violation [should-apply violation-name validation-state]
   (if should-apply
     (add-violation validation-state violation-name)
     validation-state))
+
+; TODO : testar esse cara e adicionar ele no has-no-limit
+(defn get-updated-account [current-state]
+  (let [debit (->> current-state :state :transactions (map :amount) (reduce +))
+        account (:state current-state)]
+    (update-in account [:account :availableLimit] - debit)))
 
 (defn has-no-limit? [amount account]
   (-> account
@@ -93,3 +99,6 @@
       (last)
       (is-doubled? transaction)
       (apply-violation :doubled-transaction validation-state)))
+
+(defn save-transaction [current-state transaction]
+  (update current-state :transactions conj transaction))
