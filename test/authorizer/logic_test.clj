@@ -105,7 +105,6 @@
     (let [validation-state (->> b/initial-validation-state (b/with-availableLimit 0))
           transaction (->> b/a-transaction (b/tx-with-amount 1))
           new-state (l/validate-limit validation-state transaction)]
-      (println new-state)
       (is (some #(= :insufficient-limit %) (:violations new-state)))))
 
   (testing "should not add insufficient-limit violation in the state if the account have limit"
@@ -278,13 +277,13 @@
           expected-json "{\"account\":{\"activeCard\":false,\"availableLimit\":100},\"violations\":[\"test-violation\"]}"]
       (is (= expected-json parsed-json)))))
 
-; TODO
 ; (deftest validate-transaction 
-;   (testing "should process a valid transaction"
+;   (testing "should add more then one violition"
 ;     (let [
 ;       account (->> b/an-account (b/with-availableLimit 10))
 ;       state (->> b/initial-state (b/with-account account))
-;       tx (->> b/a-transaction (b/tx-with-amount 10))
+;       tx1 (->> b/a-transaction (b/tx-with-amount 1) (b/tx-with-time 12 0))
+;       tx2 (->> b/a-transaction (b/tx-with-amount 1) (b/tx-with-time 12 1))
 ;       new-state (l/validate-transaction state tx)
 ;       ]
 ;       new-state)))
