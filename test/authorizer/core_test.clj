@@ -3,8 +3,11 @@
             [clojure.string :as string]
             [authorizer.core :as app]))
 
-(defn join-as-lines [in] (string/join "\n" in))
-(defn interact [args] (string/split-lines (with-out-str (with-in-str (join-as-lines args) (app/-main)))))
+(defn interact [args]
+  (-> (string/join "\n" args )
+      (with-in-str (app/-main))
+      (with-out-str)
+      (string/split-lines)))
 
 (deftest main-test
   (testing "The transaction amount should not exceed available limit"
@@ -15,6 +18,7 @@
                   "{\"account\":{\"activeCard\":true,\"availableLimit\":80},\"violations\":[]}"
                   "{\"account\":{\"activeCard\":true,\"availableLimit\":80},\"violations\":[\"insufficient-limit\"]}"]
           result (interact input)]
+      (println result)
       (is (= output result))))
 
   (testing "once created, the account should not be updated or recreated"
@@ -46,7 +50,7 @@
                   "{\"account\":{\"activeCard\":true,\"availableLimit\":70},\"violations\":[\"high-frequency-small-interval\"]}"]
           result (interact input)]
       (is (= output result))))
-      
+
   (testing "There should not be more than 2 similar transactions (same amount and merchant) in a 2 minutes interval"
     (let [input ["{ \"account\": { \"activeCard\": true, \"availableLimit\": 100 } }"
                  "{ \"transaction\": { \"merchant\": \"Burger King\", \"amount\": 10, \"time\": \"2019-02-13T10:00:00.000Z\" } }"
@@ -56,8 +60,7 @@
                   "{\"account\":{\"activeCard\":true,\"availableLimit\":90},\"violations\":[\"doubled-transaction\"]}"]
           result (interact input)]
       (is (= output result))))
-      
-      
+
   (testing "should list more than one violation"
     (let [input ["{ \"account\": { \"activeCard\": true, \"availableLimit\": 100 } }"
                  "{ \"transaction\": { \"merchant\": \"Burger King\", \"amount\": 60, \"time\": \"2019-02-13T10:00:00.000Z\" } }"
@@ -67,5 +70,5 @@
                   "{\"account\":{\"activeCard\":true,\"availableLimit\":40},\"violations\":[\"insufficient-limit\",\"doubled-transaction\"]}"]
           result (interact input)]
       (is (= output result)))))
-      
-      
+
+
