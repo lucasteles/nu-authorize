@@ -39,5 +39,8 @@
 (defn with-violation [violation current-state]
   (update current-state :violations conj violation))
 
+(defn with-violations [violations current-state]
+  (assoc current-state :violations violations))
+
 (defn active [current-state] (assoc-in current-state [:account :activeCard] true))
 (defn inactive [current-state] (assoc-in current-state [:account :activeCard] false))

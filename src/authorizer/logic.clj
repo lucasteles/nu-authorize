@@ -94,16 +94,14 @@
 (defn save-transaction [current-state transaction]
   (update current-state :transactions conj transaction))
 
+(defn has-violations? [validation-state]
+  (-> validation-state
+      :violations
+      seq
+      boolean))
+
 (defn get-show-data [validation-state]
   (j/write-str (select-keys (get-updated-account validation-state) [:account :violations])))
-
-(defn has-violations? [validation-state]
-  (and
-   (contains? validation-state :violations)
-   (seq  (:violations validation-state))))
-
-(defn pipe-print [state i]
-  (println "DEBUG" i " - " state) state)
 
 (defn validate-transaction [app-state transaction]
   (-> app-state
