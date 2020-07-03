@@ -18,7 +18,6 @@
                   "{\"account\":{\"activeCard\":true,\"availableLimit\":80},\"violations\":[]}"
                   "{\"account\":{\"activeCard\":true,\"availableLimit\":80},\"violations\":[\"insufficient-limit\"]}"]
           result (interact input)]
-      (println result)
       (is (= output result))))
 
   (testing "once created, the account should not be updated or recreated"

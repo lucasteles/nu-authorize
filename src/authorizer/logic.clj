@@ -100,7 +100,7 @@
       seq
       boolean))
 
-(defn get-show-data [validation-state]
+(defn get-account-json [validation-state]
   (j/write-str (select-keys (get-updated-account validation-state) [:account :violations])))
 
 (defn validate-transaction [app-state transaction]

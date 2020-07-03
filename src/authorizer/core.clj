@@ -6,7 +6,7 @@
 (defn- try-run-command! [f state input]
   (let [validation (f state input)
         new-state (if (l/has-violations? validation) state validation)]
-    (println (l/get-show-data validation))
+    (println (l/get-account-json validation))
     (dissoc new-state :violations)))
 
 (defn- main-loop! [state]

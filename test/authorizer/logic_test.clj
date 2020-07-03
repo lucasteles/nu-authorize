@@ -261,10 +261,10 @@
     (let [state (->> b/initial-validation-state (b/with-violation :test-violation))]
       (is (true? (l/has-violations? state))))))
 
-(deftest get-show-data-test
+(deftest get-account-json-test
   (testing "should return correct json with no violations"
     (let [state (->> b/initial-validation-state (b/with-availableLimit 10) (b/active))
-          parsed-json (l/get-show-data state)
+          parsed-json (l/get-account-json state)
           expected-json "{\"account\":{\"activeCard\":true,\"availableLimit\":10},\"violations\":[]}"]
       (is (= expected-json parsed-json))))
 
@@ -273,7 +273,7 @@
                      (b/with-availableLimit 100)
                      (b/inactive)
                      (b/with-violation :test-violation))
-          parsed-json (l/get-show-data state)
+          parsed-json (l/get-account-json state)
           expected-json "{\"account\":{\"activeCard\":false,\"availableLimit\":100},\"violations\":[\"test-violation\"]}"]
       (is (= expected-json parsed-json)))))
 
