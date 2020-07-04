@@ -12,6 +12,7 @@
 
 (defn tx-with-amount [amount transaction] (assoc-in transaction [:amount] amount))
 (defn tx-with-merchant [name transaction] (assoc-in transaction [:merchant] name))
+(defn tx-as-input [tx] {:transaction tx})
 (defn tx-with-time [minutes seconds transaction] (assoc-in transaction
                                                            [:time] (format "2019-01-01T10:%02d:%02d.000Z" minutes seconds)))
 
