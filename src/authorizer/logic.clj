@@ -22,6 +22,7 @@
   (update validation-state :violations conj violation))
 
 (s/defn as-validation :- m/ValidationState
+  "adds a violations keyword on the state to transform into a ValidationState"
   [state :- m/State] (assoc state :violations []))
 
 (s/defn create-account :- m/ValidationState
@@ -132,7 +133,7 @@
       (apply-violation :insufficient-limit validation-state)))
 
 (s/defn validate-active-card :- m/ValidationState
-  "add violation if the account is active"
+  "add violation if the account is not active"
   [validation-state :- m/ValidationState]
   (-> validation-state
       (select-account)
@@ -177,7 +178,7 @@
   (j/write-str (select-keys (get-updated-account validation-state) [:account :violations])))
 
 (s/defn validate-transaction :- m/Violations
-  "return all violations from apply the transaction in the current state"
+  "return all violations for apply the transaction in the current state"
   [app-state :- m/State
    transaction :- m/Transaction]
   (-> app-state

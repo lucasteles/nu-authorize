@@ -29,12 +29,12 @@
 (s/defn tx-with-amount :- m/Transaction
   "return a transaction copy with new amount"
   [amount :- s/Int, transaction :- m/Transaction]
-  (assoc-in transaction [:amount] amount))
+  (assoc transaction :amount amount))
 
 (s/defn tx-with-merchant :- m/Transaction
   "return a transaction copy with new merchant name"
   [name :- s/Str, transaction :- m/Transaction]
-  (assoc-in transaction [:merchant] name))
+  (assoc transaction :merchant name))
 
 (s/defn tx-as-input :- m/TransactionInput
   "wraps the transaction in an map with :transaction keyword, used for simulate an user input"
@@ -43,7 +43,7 @@
 (s/defn tx-with-time :- m/Transaction
   "return a transaction copy with new time setted"
   [minutes :- s/Int, seconds :- s/Int, transaction :- m/Transaction]
-  (assoc-in transaction [:time]
+  (assoc transaction :time
             (format "2019-01-01T10:%02d:%02d.000Z" minutes seconds)))
 
 (s/def initial-state :- m/State
