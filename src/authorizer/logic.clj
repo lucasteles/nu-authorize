@@ -96,17 +96,26 @@
   (and (have-enough-transactions? applied-transactions)
        (have-more-transactions-than-allowed? new-transaction applied-transactions)))
 
+(s/defn equal-transactions? :- s/Bool
+  "checks if the transactions have the same merchant and amount"
+  [tx1 :- m/Transaction
+   tx2 :- m/Transaction]
+  (let [get-submap #(-> %  (select-keys [:merchant :amount]))
+        tx1-info (get-submap tx1)
+        tx2-info (get-submap tx2)]
+    (= tx1-info tx2-info)))
+
 (s/defn is-doubled? :- s/Bool
   "checks if the new transaction has the same merchant and amount as the last"
-  [last-transaction :- (s/maybe m/Transaction)
+  [transactions :- [m/Transaction]
    new-transaction :- m/Transaction]
-  (let [get-submap #(-> %  (select-keys [:merchant :amount]))
-        minutes-earlier (minutes-before-transaction new-transaction)]
-    (and
-     (= (get-submap new-transaction) (get-submap last-transaction))
-     (-> last-transaction
-         (get-time)
-         (after-or-equal? minutes-earlier)))))
+  (let [minutes-earlier (minutes-before-transaction new-transaction)]
+    (->> transactions
+         (filter #(equal-transactions? % new-transaction))
+         (map get-time)
+         (filter #(after-or-equal? % minutes-earlier))
+         (count)
+         (<= 2))))
 
 (s/defn select-account :- m/Account
   "get the account from the current validation state"
@@ -145,7 +154,6 @@
    transaction :- m/Transaction]
   (-> validation-state
       :transactions
-      (last)
       (is-doubled? transaction)
       (apply-violation :doubled-transaction validation-state)))
 

@@ -56,20 +56,24 @@
   (testing "There should not be more than 2 similar transactions (same amount and merchant) in a 2 minutes interval"
     (let [input ["{ \"account\": { \"activeCard\": true, \"availableLimit\": 100 } }"
                  "{ \"transaction\": { \"merchant\": \"Burger King\", \"amount\": 10, \"time\": \"2019-02-13T10:00:00.000Z\" } }"
+                 "{ \"transaction\": { \"merchant\": \"Burger King\", \"amount\": 10, \"time\": \"2019-02-13T10:00:00.000Z\" } }"
                  "{ \"transaction\": { \"merchant\": \"Burger King\", \"amount\": 10, \"time\": \"2019-02-13T10:01:30.000Z\" } }"]
           output ["{\"account\":{\"activeCard\":true,\"availableLimit\":100},\"violations\":[]}"
                   "{\"account\":{\"activeCard\":true,\"availableLimit\":90},\"violations\":[]}"
-                  "{\"account\":{\"activeCard\":true,\"availableLimit\":90},\"violations\":[\"doubled-transaction\"]}"]
+                  "{\"account\":{\"activeCard\":true,\"availableLimit\":80},\"violations\":[]}"
+                  "{\"account\":{\"activeCard\":true,\"availableLimit\":80},\"violations\":[\"doubled-transaction\"]}"]
           result (interact input)]
       (is (= output result))))
 
   (testing "should list more than one violation"
     (let [input ["{ \"account\": { \"activeCard\": true, \"availableLimit\": 100 } }"
-                 "{ \"transaction\": { \"merchant\": \"Burger King\", \"amount\": 60, \"time\": \"2019-02-13T10:00:00.000Z\" } }"
-                 "{ \"transaction\": { \"merchant\": \"Burger King\", \"amount\": 60, \"time\": \"2019-02-13T10:01:30.000Z\" } }"]
+                 "{ \"transaction\": { \"merchant\": \"Burger King\", \"amount\": 40, \"time\": \"2019-02-13T10:00:00.000Z\" } }"
+                 "{ \"transaction\": { \"merchant\": \"Burger King\", \"amount\": 40, \"time\": \"2019-02-13T10:00:00.000Z\" } }"
+                 "{ \"transaction\": { \"merchant\": \"Burger King\", \"amount\": 40, \"time\": \"2019-02-13T10:01:30.000Z\" } }"]
           output ["{\"account\":{\"activeCard\":true,\"availableLimit\":100},\"violations\":[]}"
-                  "{\"account\":{\"activeCard\":true,\"availableLimit\":40},\"violations\":[]}"
-                  "{\"account\":{\"activeCard\":true,\"availableLimit\":40},\"violations\":[\"insufficient-limit\",\"doubled-transaction\"]}"]
+                  "{\"account\":{\"activeCard\":true,\"availableLimit\":60},\"violations\":[]}"
+                  "{\"account\":{\"activeCard\":true,\"availableLimit\":20},\"violations\":[]}"
+                  "{\"account\":{\"activeCard\":true,\"availableLimit\":20},\"violations\":[\"insufficient-limit\",\"doubled-transaction\"]}"]
           result (interact input)]
       (is (= output result)))))
 
