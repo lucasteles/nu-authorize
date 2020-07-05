@@ -2,7 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [authorizer.test-builders :as b]
+   [schema.core :as s]
+   [authorizer.model :as m]
    [authorizer.logic :as l]))
+
+(s/set-fn-validation! true)
 
 (deftest parse-json-input-test
   (testing "should parse a valid account json"
@@ -42,36 +46,28 @@
 
 (deftest create-account-test
   (testing "should create a new account"
-    (let [initial-empty-state {}
+    (let [initial-empty-state m/initial-state
           account-input b/an-account
           new-state (l/create-account initial-empty-state account-input)]
       (is (= (:account new-state) (:account account-input)))))
 
   (testing "should not have violations when an account is created"
-    (let [initial-empty-state {}
+    (let [initial-empty-state m/initial-state
           account-input b/an-account
           new-state (l/create-account initial-empty-state account-input)]
       (is (empty? (:violations new-state)))))
 
   (testing "should return a violation if an account already exists"
-    (let [initial-state b/initial-validation-state
+    (let [initial-state b/initial-state
           account-input (->> b/an-account (b/account-with-limit 1))
           new-state (l/create-account initial-state account-input)
           expected-violations [:account-already-initialized]]
       (is (= (:violations new-state) expected-violations))))
 
-  (testing "should add a violation if an account already contains one"
-    (let [initial-state (->> b/initial-validation-state (b/with-violation :test-violation))
-          account-input b/an-account
-          new-state (l/create-account initial-state account-input)
-          expected-violations [:test-violation :account-already-initialized]]
-      (is (= (:violations new-state) expected-violations))))
-
   (testing "should not change the current account when have a violation"
-    (let [initial-state (->> b/initial-validation-state (b/with-violation :test-violation))
-          account-input b/an-account
-          new-state (l/create-account initial-state account-input)]
-      (is (=  (:account initial-state) (:account new-state))))))
+    (let [account-input b/an-account
+          new-state (l/create-account b/initial-state account-input)]
+      (is (=  (:account b/initial-state) (:account new-state))))))
 
 (deftest has-no-limit?-test
   (testing "should return true if the account dont have limit"
@@ -91,13 +87,13 @@
 
 (deftest add-violation-test
   (testing "should add violation to empty state"
-    (let [validation-state {:violations []}
-          expected-state {:violations [:test-violation]}]
+    (let [validation-state b/initial-validation-state
+          expected-state (->> b/initial-validation-state (b/with-violations [:test-violation]))]
       (is (= expected-state (l/add-violation validation-state :test-violation)))))
 
   (testing "should add violation to the current state"
-    (let [validation-state {:violations [:current-violation]}
-          expected-state {:violations [:current-violation :test-violation]}]
+    (let [validation-state (->> b/initial-validation-state (b/with-violations [:current-violation]))
+          expected-state (->> b/initial-validation-state (b/with-violations [:current-violation :test-violation]))]
       (is (= expected-state (l/add-violation validation-state :test-violation))))))
 
 (deftest validate-limit-test
@@ -116,7 +112,10 @@
   (testing "once created, the account should not be updated or recreated"
     (let [account-input1 (->> b/an-account (b/account-with-limit 100))
           account-input2 (->> b/an-account (b/account-with-limit 350))
-          new-state (-> {} (l/create-account account-input1) (l/create-account account-input2))
+          new-state (-> m/initial-state
+                        (l/create-account account-input1)
+                        (dissoc :violations)
+                        (l/create-account account-input2))
           expected {:account {:activeCard true :availableLimit 100}
                     :transactions [] :violations [:account-already-initialized]}]
       (is (= new-state expected)))))
@@ -218,7 +217,7 @@
 
 (deftest save-transaction-test
   (testing "should create first transaction"
-    (let [state b/initial-validation-state
+    (let [state b/initial-state
           tx b/a-transaction
           new-state (l/save-transaction state tx)
           expected-txs [tx]]
@@ -226,7 +225,7 @@
 
   (testing "should add a transaction"
     (let [tx b/a-transaction
-          state (->> b/initial-validation-state (b/with-transactions [tx]))
+          state (->> b/initial-state (b/with-transactions [tx]))
           new-state (l/save-transaction state tx)
           expected-txs [tx tx]]
       (is (= expected-txs (:transactions new-state))))))
@@ -290,7 +289,7 @@
     (let [state (->> b/initial-state (b/with-availableLimit 100))
           tx1 (->> b/a-transaction (b/tx-with-amount 20) (b/tx-with-merchant "Burguer King") (b/tx-as-input))
           tx2 (->> b/a-transaction (b/tx-with-amount 90) (b/tx-with-merchant "other merchant") (b/tx-as-input))
-          new-state (-> state (l/process-transaction tx1) (l/process-transaction tx2))
+          new-state (-> state (l/process-transaction tx1) (b/remove-violations) (l/process-transaction tx2))
           expected {:account {:activeCard true :availableLimit 100}
                     :transactions [{:merchant "Burguer King"
                                     :amount 20
@@ -309,14 +308,15 @@
 
   (testing "There should not be more than 3 transactions on a 2 minute interval"
     (let [state (->> b/initial-state (b/with-availableLimit 100))
+          then b/remove-violations
           tx1 (->> b/a-transaction (b/tx-with-amount 10) (b/tx-with-merchant "Burguer King 1") (b/tx-as-input))
           tx2 (->> b/a-transaction (b/tx-with-amount 10) (b/tx-with-merchant "Burguer King 2") (b/tx-as-input))
           tx3 (->> b/a-transaction (b/tx-with-amount 10) (b/tx-with-merchant "Burguer King 3") (b/tx-as-input))
           tx4 (->> b/a-transaction (b/tx-with-amount 10) (b/tx-with-merchant "Burguer King 4") (b/tx-as-input))
           new-state (-> state
-                        (l/process-transaction tx1)
-                        (l/process-transaction tx2)
-                        (l/process-transaction tx3)
+                        (l/process-transaction tx1) (then)
+                        (l/process-transaction tx2) (then)
+                        (l/process-transaction tx3) (then)
                         (l/process-transaction tx4))
           expected {:account {:activeCard true :availableLimit 100}
                     :transactions [{:merchant "Burguer King 1" :amount 10 :time  "2019-01-01T10:00:00.000Z"}
@@ -331,6 +331,7 @@
           tx2 (->> b/a-transaction (b/tx-with-amount 10) (b/tx-with-merchant "Burguer King") (b/tx-as-input))
           new-state (-> state
                         (l/process-transaction tx1)
+                        (b/remove-violations)
                         (l/process-transaction tx2))
           expected {:account {:activeCard true :availableLimit 100}
                     :transactions [{:merchant "Burguer King" :amount 10 :time  "2019-01-01T10:00:00.000Z"}]
@@ -343,6 +344,7 @@
           tx2 (->> b/a-transaction (b/tx-with-amount 60) (b/tx-with-merchant "Burguer King") (b/tx-with-time 1 0) (b/tx-as-input))
           new-state (-> state
                         (l/process-transaction tx1)
+                        (b/remove-violations)
                         (l/process-transaction tx2))
           expected {:account {:activeCard true :availableLimit 100}
                     :transactions [{:merchant "Burguer King" :amount 60 :time  "2019-01-01T10:00:00.000Z"}]

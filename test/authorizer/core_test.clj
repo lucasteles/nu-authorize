@@ -1,10 +1,13 @@
 (ns authorizer.core-test
   (:require [clojure.test :refer :all]
             [clojure.string :as string]
+            [schema.core :as s]
             [authorizer.core :as app]))
 
+(s/set-fn-validation! true)
+
 (defn interact [args]
-  (-> (string/join "\n" args )
+  (-> (string/join "\n" args)
       (with-in-str (app/-main))
       (with-out-str)
       (string/split-lines)))

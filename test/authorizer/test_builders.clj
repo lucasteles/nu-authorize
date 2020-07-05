@@ -1,47 +1,101 @@
-(ns authorizer.test-builders)
+(ns authorizer.test-builders
+  (:require [schema.core :as s]
+            [authorizer.model :as m]))
 
-(def an-account  {:account {:activeCard true :availableLimit 0}})
-(defn account-with-limit [limit account] (assoc-in account [:account :availableLimit] limit))
-(defn account-active [account] (assoc-in account [:account :activeCard] true))
-(defn account-inactive [account] (assoc-in account [:account :activeCard] false))
+(def StateLike (merge m/State { (s/optional-key :violations) m/Violations }))
 
-(def a-transaction
+(s/def an-account :- m/Account
+  {:account {:activeCard true :availableLimit 0}})
+
+(s/defn account-with-limit :- m/Account
+  "return a account copy with the new limit setted"
+  [limit :- s/Int, account :- m/Account]
+  (assoc-in account [:account :availableLimit] limit))
+
+(s/defn account-active :- m/Account
+  "return a account copy with activeCard true"
+  [account :- m/Account] (assoc-in account [:account :activeCard] true))
+
+(s/defn account-inactive :- m/Account
+  "return a account copy with activeCard false"
+  [account :- m/Account]
+  (assoc-in account [:account :activeCard] false))
+
+(s/def a-transaction :- m/Transaction
   {:merchant "Merchant name"
    :amount 0
    :time  "2019-01-01T10:00:00.000Z"})
 
-(defn tx-with-amount [amount transaction] (assoc-in transaction [:amount] amount))
-(defn tx-with-merchant [name transaction] (assoc-in transaction [:merchant] name))
-(defn tx-as-input [tx] {:transaction tx})
-(defn tx-with-time [minutes seconds transaction] (assoc-in transaction
-                                                           [:time] (format "2019-01-01T10:%02d:%02d.000Z" minutes seconds)))
+(s/defn tx-with-amount :- m/Transaction
+  "return a transaction copy with new amount"
+  [amount :- s/Int, transaction :- m/Transaction]
+  (assoc-in transaction [:amount] amount))
 
-(def initial-state
+(s/defn tx-with-merchant :- m/Transaction
+  "return a transaction copy with new merchant name"
+  [name :- s/Str, transaction :- m/Transaction]
+  (assoc-in transaction [:merchant] name))
+
+(s/defn tx-as-input :- m/TransactionInput
+  "wraps the transaction in an map with :transaction keyword, used for simulate an user input"
+  [tx :- m/Transaction] {:transaction tx})
+
+(s/defn tx-with-time :- m/Transaction
+  "return a transaction copy with new time setted"
+  [minutes :- s/Int, seconds :- s/Int, transaction :- m/Transaction]
+  (assoc-in transaction [:time]
+            (format "2019-01-01T10:%02d:%02d.000Z" minutes seconds)))
+
+(s/def initial-state :- m/State
   (merge an-account {:transactions []}))
 
-(def initial-validation-state
+(s/def initial-validation-state :- m/ValidationState
   (merge initial-state {:violations []}))
 
-(defn with-availableLimit [limit current-state]
+(s/defn with-availableLimit :- StateLike
+  "return new state with availableLimit setted"
+  [limit :- s/Int, current-state :- StateLike]
   (assoc-in current-state [:account :availableLimit] limit))
 
-(defn with-activeCard [active current-state]
+(s/defn with-activeCard :- StateLike
+  "return new state with activeCard setted"
+  [active :- s/Bool current-state :- StateLike]
   (assoc-in current-state [:account :activeCard] active))
 
-(defn with-transactions [transactions current-state]
+(s/defn with-transactions :- StateLike
+  "return new state with transactions setted"
+  [transactions :- [m/Transaction] current-state :- StateLike]
   (assoc-in current-state [:transactions] transactions))
 
-(defn with-account [account current-state]
+(s/defn with-account :- StateLike
+  "return new state with account setted"
+   [account :- m/Account  current-state :- StateLike]
   (merge current-state account))
 
-(defn add-transaction [transaction current-state]
+(s/defn add-transaction :- StateLike
+  "return a copy of the state with the transaction added"
+  [transaction :- m/Transaction current-state :- StateLike]
   (update-in current-state [:transactions] conj transaction))
 
-(defn with-violation [violation current-state]
+(s/defn with-violation :- StateLike
+  "return a copy of the state with the violation added"
+  [violation :- s/Keyword current-state :- StateLike]
   (update current-state :violations conj violation))
 
-(defn with-violations [violations current-state]
+(s/defn with-violations :- StateLike
+  "return a copy of the state with all violations setted"
+  [violations :- m/Violations current-state :- StateLike]
   (assoc current-state :violations violations))
 
-(defn active [current-state] (assoc-in current-state [:account :activeCard] true))
-(defn inactive [current-state] (assoc-in current-state [:account :activeCard] false))
+(s/defn active :- StateLike
+  "return a copy of the state with activated account"
+  [current-state :- StateLike] (assoc-in current-state [:account :activeCard] true))
+
+(s/defn inactive :- StateLike
+  "return a copy of the state with inactivated account"
+  [current-state :- StateLike] (assoc-in current-state [:account :activeCard] false))
+
+(s/defn remove-violations :- m/State
+  "removes the violations keyword, turning the validation state into a state"
+  [state :- m/ValidationState]
+  (dissoc state :violations))
