@@ -2,14 +2,14 @@
   (:require [schema.core :as s]
             [authorizer.model :as m]))
 
-(def StateLike (merge m/State { (s/optional-key :violations) m/Violations }))
+(def StateLike (merge m/State {(s/optional-key :violations) m/Violations}))
 
 (s/def an-account :- m/Account
   {:account {:activeCard true :availableLimit 0}})
 
 (s/defn account-with-limit :- m/Account
   "return a account copy with the new limit setted"
-  [limit :- s/Int, account :- m/Account]
+  [limit :- s/Int account :- m/Account]
   (assoc-in account [:account :availableLimit] limit))
 
 (s/defn account-active :- m/Account
@@ -44,7 +44,7 @@
   "return a transaction copy with new time setted"
   [minutes :- s/Int, seconds :- s/Int, transaction :- m/Transaction]
   (assoc transaction :time
-            (format "2019-01-01T10:%02d:%02d.000Z" minutes seconds)))
+         (format "2019-01-01T10:%02d:%02d.000Z" minutes seconds)))
 
 (s/def initial-state :- m/State
   (merge an-account {:transactions []}))
@@ -69,7 +69,7 @@
 
 (s/defn with-account :- StateLike
   "return new state with account setted"
-   [account :- m/Account  current-state :- StateLike]
+  [account :- m/Account  current-state :- StateLike]
   (merge current-state account))
 
 (s/defn add-transaction :- StateLike
@@ -89,11 +89,13 @@
 
 (s/defn active :- StateLike
   "return a copy of the state with activated account"
-  [current-state :- StateLike] (assoc-in current-state [:account :activeCard] true))
+  [current-state :- StateLike]
+  (assoc-in current-state [:account :activeCard] true))
 
 (s/defn inactive :- StateLike
   "return a copy of the state with inactivated account"
-  [current-state :- StateLike] (assoc-in current-state [:account :activeCard] false))
+  [current-state :- StateLike] 
+  (assoc-in current-state [:account :activeCard] false))
 
 (s/defn remove-violations :- m/State
   "removes the violations keyword, turning the validation state into a state"

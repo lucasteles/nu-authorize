@@ -17,7 +17,10 @@
 
   (testing "should parse a valid transaction json"
     (let [valid-json "{ \"transaction\": { \"merchant\": \"Burger King\", \"amount\": 20, \"time\": \"2019-02-13T10:00:00.000Z\" } }"
-          expected-map {:transaction {:merchant "Burger King", :amount 20, :time "2019-02-13T10:00:00.000Z"}}
+          expected-map {:transaction
+                        {:merchant "Burger King"
+                         :amount 20
+                         :time "2019-02-13T10:00:00.000Z"}}
           parsed-json (l/parse-json-input valid-json)]
       (is (= parsed-json expected-map))))
 
@@ -88,12 +91,16 @@
 (deftest add-violation-test
   (testing "should add violation to empty state"
     (let [validation-state b/initial-validation-state
-          expected-state (->> b/initial-validation-state (b/with-violations [:test-violation]))]
-      (is (= expected-state (l/add-violation validation-state :test-violation)))))
+          expected-state (->> b/initial-validation-state
+                              (b/with-violations [:test-violation]))]
+      (is (= expected-state
+             (l/add-violation validation-state :test-violation)))))
 
   (testing "should add violation to the current state"
-    (let [validation-state (->> b/initial-validation-state (b/with-violations [:current-violation]))
-          expected-state (->> b/initial-validation-state (b/with-violations [:current-violation :test-violation]))]
+    (let [validation-state (->> b/initial-validation-state
+                                (b/with-violations [:current-violation]))
+          expected-state (->> b/initial-validation-state
+                              (b/with-violations [:current-violation :test-violation]))]
       (is (= expected-state (l/add-violation validation-state :test-violation))))))
 
 (deftest validate-limit-test
@@ -172,7 +179,8 @@
   (testing "should add violation high-frequency-small-interval"
     (let [tx (->> b/a-transaction (b/tx-with-time 10 0))
           past-transactions [tx tx tx]
-          validation-state (->> b/initial-validation-state (b/with-transactions past-transactions))
+          validation-state (->> b/initial-validation-state
+                                (b/with-transactions past-transactions))
           expected-violations [:high-frequency-small-interval]
           new-state (l/validate-transaction-frequency validation-state tx)]
       (is (= expected-violations (:violations new-state))))))
@@ -200,43 +208,75 @@
 
 (deftest is-doubled?-test
   (testing "should return true when have 3 tx with same amount and merchant in less then 2 minutes"
-    (let [tx (->> b/a-transaction (b/tx-with-time 1 0) (b/tx-with-amount 1) (b/tx-with-merchant "A"))
-          tx-new (->> b/a-transaction (b/tx-with-time 2 0) (b/tx-with-amount 1) (b/tx-with-merchant "A"))
+    (let [tx (->> b/a-transaction
+                  (b/tx-with-time 1 0)
+                  (b/tx-with-amount 1)
+                  (b/tx-with-merchant "A"))
+          tx-new (->> b/a-transaction
+                      (b/tx-with-time 2 0)
+                      (b/tx-with-amount 1)
+                      (b/tx-with-merchant "A"))
           past-transactions [tx tx]]
       (is (l/is-doubled? past-transactions tx-new))))
 
   (testing "should return false when have 3 tx with same amount and diferent merchant in less then 2 minutes"
-    (let [tx (->> b/a-transaction (b/tx-with-time 1 0) (b/tx-with-amount 1) (b/tx-with-merchant "A"))
-          tx-new (->> b/a-transaction (b/tx-with-time 2 0) (b/tx-with-amount 1) (b/tx-with-merchant "B"))
+    (let [tx (->> b/a-transaction
+                  (b/tx-with-time 1 0)
+                  (b/tx-with-amount 1)
+                  (b/tx-with-merchant "A"))
+          tx-new (->> b/a-transaction
+                      (b/tx-with-time 2 0)
+                      (b/tx-with-amount 1)
+                      (b/tx-with-merchant "B"))
           past-transactions [tx tx]]
       (is (false? (l/is-doubled? past-transactions tx-new)))))
 
   (testing "should return false when have 3 tx with same merchant and diferent amount in less then 2 minutes"
-    (let [tx (->> b/a-transaction (b/tx-with-time 1 0) (b/tx-with-amount 1) (b/tx-with-merchant "A"))
-          tx-new (->> b/a-transaction (b/tx-with-time 2 0) (b/tx-with-amount 2) (b/tx-with-merchant "A"))
+    (let [tx (->> b/a-transaction
+                  (b/tx-with-time 1 0)
+                  (b/tx-with-amount 1)
+                  (b/tx-with-merchant "A"))
+          tx-new (->> b/a-transaction
+                      (b/tx-with-time 2 0)
+                      (b/tx-with-amount 2)
+                      (b/tx-with-merchant "A"))
           past-transactions [tx tx]]
       (is (false? (l/is-doubled? past-transactions tx-new)))))
 
   (testing "should return false when have 3 tx with same merchant and amount in more then 2 minutes"
-    (let [tx (->> b/a-transaction (b/tx-with-time 1 0) (b/tx-with-amount 1) (b/tx-with-merchant "A"))
-          tx-new (->> b/a-transaction (b/tx-with-time 3 1) (b/tx-with-amount 1) (b/tx-with-merchant "A"))
+    (let [tx (->> b/a-transaction
+                  (b/tx-with-time 1 0)
+                  (b/tx-with-amount 1)
+                  (b/tx-with-merchant "A"))
+          tx-new (->> b/a-transaction
+                      (b/tx-with-time 3 1)
+                      (b/tx-with-amount 1)
+                      (b/tx-with-merchant "A"))
           past-transactions [tx tx]]
       (is (false? (l/is-doubled? past-transactions tx-new))))))
 
 (deftest validate-doubled-transaction-test
   (testing "should add violation doubled-transaction"
-    (let [tx (->> b/a-transaction (b/tx-with-time 1 0) (b/tx-with-amount 1) (b/tx-with-merchant "A"))
+    (let [tx (->> b/a-transaction
+                  (b/tx-with-time 1 0)
+                  (b/tx-with-amount 1)
+                  (b/tx-with-merchant "A"))
           tx-new (->> tx (b/tx-with-time 2 0))
           transactions [tx tx]
-          validation-state (->> b/initial-validation-state (b/with-transactions transactions))
+          validation-state (->> b/initial-validation-state
+                                (b/with-transactions transactions))
           expected-violations [:doubled-transaction]
           new-state (l/validate-doubled-transaction validation-state tx-new)]
       (is (= expected-violations (:violations new-state)))))
 
   (testing "should not add violation doubled-transaction"
-    (let [tx1 (->> b/a-transaction (b/tx-with-time 1 0) (b/tx-with-amount 1) (b/tx-with-merchant "A"))
+    (let [tx1 (->> b/a-transaction
+                   (b/tx-with-time 1 0)
+                   (b/tx-with-amount 1)
+                   (b/tx-with-merchant "A"))
           tx2 (->> tx1 (b/tx-with-time 3 1))
-          validation-state (->> b/initial-validation-state (b/with-transactions [tx1 tx1]))
+          validation-state (->> b/initial-validation-state
+                                (b/with-transactions [tx1 tx1]))
           expected-violations []
           new-state (l/validate-doubled-transaction validation-state tx2)]
       (is (= expected-violations (:violations new-state))))))
@@ -261,7 +301,9 @@
     (let [expected-limit 10
           account (->> b/an-account (b/account-with-limit expected-limit))
           transactions []
-          state (->> b/initial-validation-state (b/with-transactions transactions) (b/with-account account))
+          state (->> b/initial-validation-state
+                     (b/with-transactions transactions)
+                     (b/with-account account))
           new-state (l/get-updated-account state)
           current-limit (-> new-state :account :availableLimit)]
       (is (= expected-limit current-limit))))
@@ -269,7 +311,9 @@
   (testing "should return the account with calculated limit (1 tx)"
     (let [account (->> b/an-account (b/account-with-limit 10))
           transactions [(->> b/a-transaction (b/tx-with-amount 5))]
-          state (->> b/initial-validation-state (b/with-transactions transactions) (b/with-account account))
+          state (->> b/initial-validation-state
+                     (b/with-transactions transactions)
+                     (b/with-account account))
           new-state (l/get-updated-account state)
           expected-limit 5
           current-limit (-> new-state :account :availableLimit)]
@@ -279,7 +323,9 @@
     (let [account (->> b/an-account (b/account-with-limit 100))
           transactions [(->> b/a-transaction (b/tx-with-amount 10))
                         (->> b/a-transaction (b/tx-with-amount 20))]
-          state (->> b/initial-validation-state (b/with-transactions transactions) (b/with-account account))
+          state (->> b/initial-validation-state
+                     (b/with-transactions transactions)
+                     (b/with-account account))
           new-state (l/get-updated-account state)
           expected-limit 70
           current-limit (-> new-state :account :availableLimit)]
@@ -291,12 +337,14 @@
       (is (false? (l/has-violations? state)))))
 
   (testing "should return true if the validation result contains violations"
-    (let [state (->> b/initial-validation-state (b/with-violation :test-violation))]
+    (let [state (->> b/initial-validation-state
+                     (b/with-violation :test-violation))]
       (is (true? (l/has-violations? state))))))
 
 (deftest get-account-json-test
   (testing "should return correct json with no violations"
-    (let [state (->> b/initial-validation-state (b/with-availableLimit 10) (b/active))
+    (let [state (->> b/initial-validation-state
+                     (b/with-availableLimit 10) (b/active))
           parsed-json (l/get-account-json state)
           expected-json "{\"account\":{\"activeCard\":true,\"availableLimit\":10},\"violations\":[]}"]
       (is (= expected-json parsed-json))))
@@ -313,9 +361,18 @@
 (deftest process-transaction
   (testing "The transaction amount should not exceed available limit"
     (let [state (->> b/initial-state (b/with-availableLimit 100))
-          tx1 (->> b/a-transaction (b/tx-with-amount 20) (b/tx-with-merchant "Burguer King") (b/tx-as-input))
-          tx2 (->> b/a-transaction (b/tx-with-amount 90) (b/tx-with-merchant "other merchant") (b/tx-as-input))
-          new-state (-> state (l/process-transaction tx1) (b/remove-violations) (l/process-transaction tx2))
+          tx1 (->> b/a-transaction
+                   (b/tx-with-amount 20)
+                   (b/tx-with-merchant "Burguer King")
+                   (b/tx-as-input))
+          tx2 (->> b/a-transaction
+                   (b/tx-with-amount 90)
+                   (b/tx-with-merchant "other merchant")
+                   (b/tx-as-input))
+          new-state (-> state
+                        (l/process-transaction tx1)
+                        (b/remove-violations)
+                        (l/process-transaction tx2))
           expected {:account {:activeCard true :availableLimit 100}
                     :transactions [{:merchant "Burguer King"
                                     :amount 20
@@ -325,7 +382,9 @@
 
   (testing "No transaction should be accepted when the card is not active"
     (let [state (->> b/initial-state (b/with-availableLimit 100) (b/inactive))
-          tx (->> b/a-transaction (b/tx-with-amount 10) (b/tx-with-merchant "Burguer King") (b/tx-as-input))
+          tx (->> b/a-transaction
+                  (b/tx-with-amount 10)
+                  (b/tx-with-merchant "Burguer King") (b/tx-as-input))
           new-state (-> state (l/process-transaction tx))
           expected {:account {:activeCard false :availableLimit 100}
                     :transactions []
@@ -335,10 +394,18 @@
   (testing "There should not be more than 3 transactions on a 2 minute interval"
     (let [state (->> b/initial-state (b/with-availableLimit 100))
           then b/remove-violations
-          tx1 (->> b/a-transaction (b/tx-with-amount 10) (b/tx-with-merchant "Burguer King 1") (b/tx-as-input))
-          tx2 (->> b/a-transaction (b/tx-with-amount 10) (b/tx-with-merchant "Burguer King 2") (b/tx-as-input))
-          tx3 (->> b/a-transaction (b/tx-with-amount 10) (b/tx-with-merchant "Burguer King 3") (b/tx-as-input))
-          tx4 (->> b/a-transaction (b/tx-with-amount 10) (b/tx-with-merchant "Burguer King 4") (b/tx-as-input))
+          tx1 (->> b/a-transaction
+                   (b/tx-with-amount 10)
+                   (b/tx-with-merchant "Burguer King 1") (b/tx-as-input))
+          tx2 (->> b/a-transaction
+                   (b/tx-with-amount 10)
+                   (b/tx-with-merchant "Burguer King 2") (b/tx-as-input))
+          tx3 (->> b/a-transaction
+                   (b/tx-with-amount 10)
+                   (b/tx-with-merchant "Burguer King 3") (b/tx-as-input))
+          tx4 (->> b/a-transaction
+                   (b/tx-with-amount 10)
+                   (b/tx-with-merchant "Burguer King 4") (b/tx-as-input))
           new-state (-> state
                         (l/process-transaction tx1) (then)
                         (l/process-transaction tx2) (then)
@@ -353,8 +420,12 @@
 
   (testing "There should have 2 similar transactions (same amount and merchant) in a 2 minutes interval"
     (let [state (->> b/initial-state (b/with-availableLimit 100))
-          tx1 (->> b/a-transaction (b/tx-with-amount 10) (b/tx-with-merchant "Burguer King") (b/tx-as-input))
-          tx2 (->> b/a-transaction (b/tx-with-amount 10) (b/tx-with-merchant "Burguer King") (b/tx-as-input))
+          tx1 (->> b/a-transaction
+                   (b/tx-with-amount 10)
+                   (b/tx-with-merchant "Burguer King") (b/tx-as-input))
+          tx2 (->> b/a-transaction
+                   (b/tx-with-amount 10)
+                   (b/tx-with-merchant "Burguer King") (b/tx-as-input))
           new-state (-> state
                         (l/process-transaction tx1) (b/remove-violations)
                         (l/process-transaction tx2))
@@ -367,7 +438,9 @@
   (testing "There should not be more than 2 similar transactions (same amount and merchant) in a 2 minutes interval"
     (let [state (->> b/initial-state (b/with-availableLimit 100))
           then b/remove-violations
-          tx (->> b/a-transaction (b/tx-with-amount 10) (b/tx-with-merchant "Burguer King") (b/tx-as-input))
+          tx (->> b/a-transaction
+                  (b/tx-with-amount 10)
+                  (b/tx-with-merchant "Burguer King") (b/tx-as-input))
           new-state (-> state
                         (l/process-transaction tx) (then)
                         (l/process-transaction tx) (then)
@@ -381,8 +454,13 @@
   (testing "should have more than one violation"
     (let [state (->> b/initial-state (b/with-availableLimit 100))
           then b/remove-violations
-          tx1 (->> b/a-transaction (b/tx-with-amount 40) (b/tx-with-merchant "Burguer King") (b/tx-as-input))
-          tx2 (->> b/a-transaction (b/tx-with-amount 40) (b/tx-with-merchant "Burguer King") (b/tx-with-time 1 0) (b/tx-as-input))
+          tx1 (->> b/a-transaction
+                   (b/tx-with-amount 40)
+                   (b/tx-with-merchant "Burguer King") (b/tx-as-input))
+          tx2 (->> b/a-transaction
+                   (b/tx-with-amount 40)
+                   (b/tx-with-merchant "Burguer King")
+                   (b/tx-with-time 1 0) (b/tx-as-input))
           new-state (-> state
                         (l/process-transaction tx1) (then)
                         (l/process-transaction tx1) (then)

@@ -7,6 +7,7 @@
 
 (def time-window 2)
 (def max-transaction-count 3)
+(def max-equal-transaction-count 2)
 
 (defn parse-json-input  [json] (try
                                  (j/read-str json :key-fn keyword)
@@ -57,17 +58,13 @@
       (< amount)))
 
 (s/defn is-card-not-active? :- s/Bool
-  "checks if the card of the account is active"
+  "checks if the card of the account is not active"
   [account :- m/Account]
   (-> account :account :activeCard (not)))
 
 (s/defn get-time
   "get the parsed time from a transaction"
   [tx :- m/Transaction] (-> tx :time (f/parse)))
-
-(s/defn have-enough-transactions? :- s/Bool
-  [applied-transactions :- [m/Transaction]]
-  (>= (count applied-transactions) (dec max-transaction-count)))
 
 (s/defn minutes-before-transaction
   "returns a datetime minutes earlier"
@@ -79,23 +76,16 @@
   [this date]
   (or (t/after? this date) (t/equal? this date)))
 
-(s/defn have-more-transactions-than-allowed? :- s/Bool
-  "checks if the number of transactions in a period of time is more then allowed"
-  [new-transaction :- m/Transaction
-   applied-transactions :- [m/Transaction]]
-  (let [minutes-earlier (minutes-before-transaction new-transaction)]
-    (->> applied-transactions
-         (map get-time)
-         (filter #(after-or-equal? % minutes-earlier))
-         (count)
-         (<= max-transaction-count))))
-
 (s/defn is-high-frequency? :- s/Bool
   "checks if there are the number of transactions applied and are more than allowed"
   [applied-transactions :- [m/Transaction]
    new-transaction :- m/Transaction]
-  (and (have-enough-transactions? applied-transactions)
-       (have-more-transactions-than-allowed? new-transaction applied-transactions)))
+  (let [time-boundery (minutes-before-transaction new-transaction)]
+    (->> applied-transactions
+         (map get-time)
+         (filter #(after-or-equal? % time-boundery))
+         (count)
+         (<= max-transaction-count))))
 
 (s/defn equal-transactions? :- s/Bool
   "checks if the transactions have the same merchant and amount"
@@ -110,13 +100,13 @@
   "checks if the new transaction has the same merchant and amount as the last"
   [transactions :- [m/Transaction]
    new-transaction :- m/Transaction]
-  (let [minutes-earlier (minutes-before-transaction new-transaction)]
+  (let [time-boundery (minutes-before-transaction new-transaction)]
     (->> transactions
          (filter #(equal-transactions? % new-transaction))
          (map get-time)
-         (filter #(after-or-equal? % minutes-earlier))
+         (filter #(after-or-equal? % time-boundery))
          (count)
-         (<= 2))))
+         (<= max-equal-transaction-count))))
 
 (s/defn select-account :- m/Account
   "get the account from the current validation state"
@@ -169,13 +159,16 @@
   [validation-state :- m/ValidationState]
   (-> validation-state
       :violations
-      seq
+      (not-empty)
       boolean))
 
 (s/defn get-account-json :- s/Str
   "return a json representation of the current state"
   [validation-state :- m/ValidationState]
-  (j/write-str (select-keys (get-updated-account validation-state) [:account :violations])))
+  (j/write-str
+   (select-keys
+    (get-updated-account validation-state)
+    [:account :violations])))
 
 (s/defn validate-transaction :- m/Violations
   "return all violations for apply the transaction in the current state"
