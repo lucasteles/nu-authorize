@@ -188,5 +188,5 @@
   (let [transaction-data (:transaction transaction)
         violations (validate-transaction app-state transaction-data)]
     (if (empty? violations)
-      (assoc (save-transaction app-state transaction-data) :violations [])
+      (as-validation (save-transaction app-state transaction-data))
       (assoc app-state :violations violations))))
