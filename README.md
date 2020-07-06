@@ -71,6 +71,15 @@ lein test
 I know how FP works, but I've never really used Clojure before. I am pretty knowledgeable 
 in F# and some Haskell, but as you use Clojure as a main language, I decided to study it.
 
+#### Why I'm using Schema
+
+I have more experience with statically typed programming languages.
+So I like to have something that tells me if my data structures don't respect
+the contract I want.
+
+Because of that, I choose to use Plumatic Schema in this project, it gives 
+me fast feedback for some mistakes even only at runtime. 
+
 #### State track
 
 I choose to track the state of the app in a more pure and functional way
