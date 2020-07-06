@@ -100,8 +100,8 @@ But with this, it's easy to recreate the state and keep track of all changes, ev
 The main goal is to build a clear and straight forward validation pipeline (with a Clojure thread)
 You can see how it is in the `validate-transaction` function on the `logic.clj` file.
 
-The `validate-transaction` should receive the current state and the new transaction as arguments and apply each of the validation functions on it. Without the need to explicitly check
-if the validation goes wrong.
+The `validate-transaction` receives the current state and the new transaction as 
+arguments and apply each of the validation functions on it. Without the need to explicitly check if the validation goes wrong.
 
 The ain of the validation is to add a representation of the error in an array inside a violations key in the state. 
 So if the validations go well and we don't have any problem with the new transaction nothing is added to the violations array
