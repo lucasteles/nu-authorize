@@ -192,3 +192,15 @@
     (if (empty? violations)
       (as-validation (save-transaction app-state transaction-data))
       (assoc app-state :violations violations))))
+
+(s/defn action-handler :- (s/maybe m/ValidationState)
+  "decide wich action to take, returns nil if receives an invalid input"
+  [state :- m/State
+   json-input]
+  (when-let [input (parse-json-input json-input)]
+    (cond
+      (is-account? input)
+      (create-account state input)
+
+      (is-transaction? input)
+      (process-transaction state input))))

@@ -358,7 +358,7 @@
           expected-json "{\"account\":{\"activeCard\":false,\"availableLimit\":100},\"violations\":[\"test-violation\"]}"]
       (is (= expected-json parsed-json)))))
 
-(deftest process-transaction
+(deftest process-transaction-test
   (testing "The transaction amount should not exceed available limit"
     (let [state (->> b/initial-state (b/with-availableLimit 100))
           tx1 (->> b/a-transaction
