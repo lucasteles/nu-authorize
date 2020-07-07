@@ -140,14 +140,6 @@
       (is-doubled? transaction)
       (apply-violation :doubled-transaction validation-state)))
 
-(s/defn has-violations? :- s/Bool
-  "checks if has violations in the state"
-  [validation-state :- m/ValidationState]
-  (-> validation-state
-      :violations
-      (not-empty)
-      boolean))
-
 (s/defn get-account-json :- s/Str
   "return a json representation of the current state"
   [current-account :- m/Account

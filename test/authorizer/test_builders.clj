@@ -2,7 +2,7 @@
   (:require [schema.core :as s]
             [authorizer.model :as m]))
 
-(def StateLike (merge m/State {(s/optional-key :violations) m/Violations}))
+(def StateLike (s/either m/State m/ValidationState))
 
 (s/def an-account :- m/Account
   {:account {:activeCard true :availableLimit 0}})
