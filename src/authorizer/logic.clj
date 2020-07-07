@@ -26,14 +26,6 @@
   "adds a violations keyword on the state to transform into a ValidationState"
   [state :- m/State] (assoc state :violations []))
 
-(s/defn create-account :- m/ValidationState
-  "returns a new state with the account created"
-  [current-state :- m/State
-   account-info :- m/Account]
-  (if (:account current-state)
-    (add-violation (as-validation current-state) :account-already-initialized)
-    (merge account-info {:transactions []  :violations []})))
-
 (s/defn apply-violation :- m/ValidationState
   "if the codition is true apply the add-validation function"
   [should-apply :- s/Bool
@@ -182,6 +174,14 @@
       (validate-doubled-transaction transaction)
       (validate-transaction-frequency transaction)
       (:violations)))
+
+(s/defn create-account :- m/ValidationState
+  "returns a new state with the account created"
+  [current-state :- m/State
+   account-info :- m/Account]
+  (if (:account current-state)
+    (add-violation (as-validation current-state) :account-already-initialized)
+    (merge account-info {:transactions []  :violations []})))
 
 (s/defn process-transaction :- m/ValidationState
   "process the transaction and apply it to the state if there are no violations"
