@@ -35,9 +35,9 @@
     (add-violation validation-state violation-name)
     validation-state))
 
-(s/defn get-updated-account :- m/ValidationState
+(s/defn get-updated-account :- m/State
   "return a new account with all transactions applied to it"
-  [state :- m/ValidationState]
+  [state :- m/State]
   (let [debit (->> state :transactions (map :amount) (reduce +))]
     (update-in state [:account :availableLimit] - debit)))
 
@@ -140,12 +140,6 @@
       (is-doubled? transaction)
       (apply-violation :doubled-transaction validation-state)))
 
-(s/defn save-transaction :- m/State
-  "adds the transaction in the current state"
-  [current-state :- m/State
-   transaction :- m/Transaction]
-  (update current-state :transactions conj transaction))
-
 (s/defn has-violations? :- s/Bool
   "checks if has violations in the state"
   [validation-state :- m/ValidationState]
@@ -156,51 +150,38 @@
 
 (s/defn get-account-json :- s/Str
   "return a json representation of the current state"
-  [validation-state :- m/ValidationState]
-  (j/write-str
-   (select-keys
-    (get-updated-account validation-state)
-    [:account :violations])))
+  [current-account :- m/Account
+   violations :- m/Violations]
+  (j/write-str (assoc current-account :violations violations)))
 
 (s/defn validate-transaction :- m/Violations
   "return all violations for apply the transaction in the current state"
   [app-state :- m/State
    transaction :- m/Transaction]
   (-> app-state
-      (as-validation)
       (get-updated-account)
+      (as-validation)
       (validate-active-card)
       (validate-limit transaction)
       (validate-doubled-transaction transaction)
       (validate-transaction-frequency transaction)
       (:violations)))
 
-(s/defn create-account :- m/ValidationState
-  "returns a new state with the account created"
-  [current-state :- m/State
-   account-info :- m/Account]
+(s/defn validate-account :- m/Violations
+  "validate account exists"
+  [current-state :- m/State]
   (if (:account current-state)
-    (add-violation (as-validation current-state) :account-already-initialized)
-    (merge account-info {:transactions []  :violations []})))
+    [:account-already-initialized] []))
 
-(s/defn process-transaction :- m/ValidationState
-  "process the transaction and apply it to the state if there are no violations"
-  [app-state :- m/State
-   transaction :- m/TransactionInput]
-  (let [transaction-data (:transaction transaction)
-        violations (validate-transaction app-state transaction-data)]
-    (if (empty? violations)
-      (as-validation (save-transaction app-state transaction-data))
-      (assoc app-state :violations violations))))
-
-(s/defn action-handler :- (s/maybe m/ValidationState)
-  "decide wich action to take, returns nil if receives an invalid input"
+(s/defn action-handler :- m/HandlerResult
+  "validate and decide the action to take"
   [state :- m/State
-   json-input]
-  (when-let [input (parse-json-input json-input)]
-    (cond
-      (is-account? input)
-      (create-account state input)
+   input :- (s/either m/TransactionInput m/Account)]
+  (cond
+    (is-account? input)
+    {:type :account
+     :violations (validate-account state)}
 
-      (is-transaction? input)
-      (process-transaction state input))))
+    (is-transaction? input)
+    {:type :transaction
+     :violations (validate-transaction state (:transaction input))}))

@@ -12,7 +12,7 @@
 
   storage-client/StorageClient
   (read-all [_this] @storage)
-  (put! [_this value] (reset! storage value)))
+  (put! [_this update-fn] (swap! storage update-fn)))
 
 (defn new-in-memory []
   (->InMemoryStorage (atom m/initial-state)))

@@ -4,10 +4,16 @@
    [authorizer.model :as m]
    [schema.core :as s]))
 
-(s/defn save!
-  [state :- m/State
+(s/defn save-account!
+  [account :- m/Account
    storage :- storage/IStorageClient]
-  (storage/put! storage state))
+  (let [account (:account account)]
+    (storage/put! storage #(assoc % :account account))))
+
+(s/defn add-transaction!
+  [transaction :- m/TransactionInput
+   storage :- storage/IStorageClient]
+  (storage/put! storage #(update % :transactions conj (:transaction transaction))))
 
 (s/defn get-account [storage :- storage/IStorageClient]
   (storage/read-all storage))

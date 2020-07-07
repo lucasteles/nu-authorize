@@ -3,6 +3,6 @@
 
 (defprotocol StorageClient
   (read-all   [storage])
-  (put!       [storage value]))
+  (put!       [storage update-fn]))
 
 (def IStorageClient (s/protocol StorageClient))
