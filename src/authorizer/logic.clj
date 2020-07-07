@@ -154,14 +154,6 @@
    transaction :- m/Transaction]
   (update current-state :transactions conj transaction))
 
-(s/defn has-violations? :- s/Bool
-  "checks if has violations in the state"
-  [validation-state :- m/ValidationState]
-  (-> validation-state
-      :violations
-      (not-empty)
-      boolean))
-
 (s/defn get-account-json :- s/Str
   "return a json representation of the current state"
   [validation-state :- m/ValidationState]

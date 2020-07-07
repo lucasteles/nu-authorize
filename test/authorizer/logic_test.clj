@@ -331,16 +331,6 @@
           current-limit (-> new-state :account :availableLimit)]
       (is (= expected-limit current-limit)))))
 
-(deftest has-violations?-test
-  (testing "should return false if the validation result not contains violations"
-    (let [state (->> b/initial-validation-state (b/with-violations []))]
-      (is (false? (l/has-violations? state)))))
-
-  (testing "should return true if the validation result contains violations"
-    (let [state (->> b/initial-validation-state
-                     (b/with-violation :test-violation))]
-      (is (true? (l/has-violations? state))))))
-
 (deftest get-account-json-test
   (testing "should return correct json with no violations"
     (let [state (->> b/initial-validation-state
