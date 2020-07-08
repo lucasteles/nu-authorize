@@ -89,9 +89,11 @@ maybe using the Component architecture suggested by [Stuart Sierra](https://gith
 but I thought it would add more complexity than the necessary for the actual 
 requirements of the challenge. 
 
-The use of an Atom to simulate a database would 
-fit better in a scenario where we need to handle concurrency. 
-So it would be possible to guarantee the atomicity of the state change.
+---
+P.S.:
+This project has other branch called `components`, it is for the alternative way I've commented above to deal with the app state, using an Atom and a more sophisticated architecture to simulate a database.
+
+---
 
 #### State definition
 
