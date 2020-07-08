@@ -82,16 +82,14 @@ me fast feedback for some mistakes even only at runtime.
 
 #### State track
 
-I choose to track the state of the app in a more pure and functional way
-using a recursive loop with the state on the main program. 
-Another option could be to use an Atom to simulate a database, 
-maybe using the Component architecture suggested by [Stuart Sierra](https://github.com/stuartsierra/component)
-but I thought it would add more complexity than the necessary for the actual 
-requirements of the challenge. 
+In this branch I choose to simulate an external database, using an Atom and the 
+[component architecture](https://github.com/stuartsierra/component) to manage
+the dependencies, the goal is to make this version closer to real applications.
 
-The use of an Atom to simulate a database would 
-fit better in a scenario where we need to handle concurrency. 
-So it would be possible to guarantee the atomicity of the state change.
+I choose to use an Atom as my memory shared state because its guarantees are good enough
+for the actual requirements, also it's the most simple way to deal with it.
+
+I'm also using some ports and adapters model to consume the state trying to make it not coupled to the domain logic.
 
 #### State definition
 
