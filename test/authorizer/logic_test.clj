@@ -50,7 +50,7 @@
 (deftest validate-account-test
   (testing "should not return violations if dont exists one"
     (let [initial-empty-state m/initial-state
-          violations (l/validate-account initial-empty-state )]
+          violations (l/validate-account initial-empty-state)]
       (is (empty? violations))))
 
   (testing "should return a violation if an account already exists"
@@ -305,3 +305,65 @@
           parsed-json (l/get-account-json state [])
           expected-json "{\"account\":{\"activeCard\":false,\"availableLimit\":100},\"violations\":[]}"]
       (is (= expected-json parsed-json)))))
+
+(deftest validate-transaction-test
+  (testing "The transaction amount should not exceed available limit"
+    (let [state (->> b/initial-state (b/with-availableLimit 80))
+          tx (->> b/a-transaction
+                  (b/tx-with-amount 90)
+                  (b/tx-with-merchant "Burguer King"))
+          violations (l/validate-transaction state tx)
+          expected [:insufficient-limit]]
+      (is (= expected violations))))
+
+  (testing "No transaction should be accepted when the card is not active"
+    (let [state (->> b/initial-state (b/with-availableLimit 100) (b/inactive))
+          tx (->> b/a-transaction
+                  (b/tx-with-amount 10)
+                  (b/tx-with-merchant "Burguer King"))
+          expected [:card-not-active]
+          violations (l/validate-transaction state tx)]
+      (is (= expected violations))))
+
+  (testing "There should not be more than 3 transactions on a 2 minute interval"
+    (let [tx1 (->> b/a-transaction
+                   (b/tx-with-amount 10)
+                   (b/tx-with-merchant "Burguer King 1"))
+          tx2 (->> b/a-transaction
+                   (b/tx-with-amount 10)
+                   (b/tx-with-merchant "Burguer King 2"))
+          tx3 (->> b/a-transaction
+                   (b/tx-with-amount 10)
+                   (b/tx-with-merchant "Burguer King 3"))
+          tx4 (->> b/a-transaction
+                   (b/tx-with-amount 10)
+                   (b/tx-with-merchant "Burguer King 4"))
+          current-transactions [tx1 tx2 tx3]
+          state (->> b/initial-state (b/with-availableLimit 100)
+                     (b/with-transactions current-transactions))
+          violations (l/validate-transaction state tx4)
+          expected [:high-frequency-small-interval]]
+      (is (= expected violations))))
+
+  (testing "There should have 2 similar transactions (same amount and merchant) in a 2 minutes interval"
+    (let [tx1 (->> b/a-transaction
+                   (b/tx-with-amount 10)
+                   (b/tx-with-merchant "Burguer King"))
+          tx2 (->> b/a-transaction
+                   (b/tx-with-amount 10)
+                   (b/tx-with-merchant "Burguer King"))
+          state (->> b/initial-state (b/with-availableLimit 100)
+                     (b/with-transactions [tx1]))
+          violations (l/validate-transaction state tx2)
+          expected []]
+      (is (= expected violations))))
+
+  (testing "There should not be more than 2 similar transactions (same amount and merchant) in a 2 minutes interval"
+    (let [tx (->> b/a-transaction
+                  (b/tx-with-amount 10)
+                  (b/tx-with-merchant "Burguer King"))
+          state (->> b/initial-state (b/with-availableLimit 100)
+                     (b/with-transactions [tx tx]))
+          violations (l/validate-transaction state tx)
+          expected [:doubled-transaction]]
+      (is (= expected violations)))))
